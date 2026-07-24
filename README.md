@@ -1,13 +1,81 @@
 # advX Speech Service
 
+Guida rapida per la demo a frasi:
+[`docs/HACKATHON_DEMO.md`](docs/HACKATHON_DEMO.md).
+
 Backend prototype for a pronunciation-training application. The service captures
-microphone audio, publishes canonical PCM frames through Redis Streams, cleans
-complete word windows, stores pronunciation benchmarks and attempts in SQLite,
-and exposes session events through a FastAPI WebSocket.
+microphone audio, publishes canonical PCM frames through Redis Streams, scores
+complete sentence utterances with a phonetic backend, streams stable per-word
+updates while the learner is still speaking, stores pronunciation benchmarks and
+attempts in SQLite, and exposes session events through a FastAPI WebSocket.
+
+## Vedere subito il prodotto
+
+Per vedere l'interfaccia senza Redis, microfono o backend usa la modalità debug:
+
+```bash
+cd /home/manuel/Scrivania/advX
+make frontend
+```
+
+Apri <http://localhost:8765/?debug=1>, premi **Start Session** e poi usa i pulsanti
+**Right**, **Wrong** e **Low**. Questa modalità permette di verificare tutta
+l'interfaccia, le animazioni, gli stati di errore e il feedback fonetico
+simulato. I tre pulsanti non compaiono nel prodotto normale.
+
+In alternativa, il backend può servire direttamente gli stessi file:
+
+```bash
+make api
+```
+
+Apri <http://127.0.0.1:8000/ui/>. Le API interattive sono disponibili su
+<http://127.0.0.1:8000/docs>.
+
+### Prova con backend e microfono reali
+
+La prima volta inizializza ambiente, database e benchmark:
+
+```bash
+make init
+make redis
+make build-demo
+```
+
+In seguito bastano:
+
+```bash
+make redis
+make dev
+```
+
+Apri <http://localhost:8765>, premi **Start Session**, quindi
+tocca il pulsante del microfono:
+
+1. il primo tocco autorizza e avvia la registrazione;
+2. pronuncia l'intera frase mostrata;
+3. il secondo tocco termina l'acquisizione e richiede la valutazione.
+
+Il browser apre due WebSocket con lo stesso session ID: uno invia PCM mono
+16 kHz in frame da 40 ms, l'altro riceve gli eventi di avanzamento e il
+risultato finale. La frase viene valutata come frase completa, non come singola
+parola isolata: il backend emette aggiornamenti progressivi sui word target
+mentre l'utente legge, poi invia un verdetto finale stabile. `localhost` è
+considerato un contesto sicuro dai browser; in produzione sono obbligatori
+HTTPS e WSS.
+
+La pipeline reale è un MVP tecnico, non uno strumento clinico. Il word gate
+attuale rispetta i budget misurati di latenza e false acceptance, ma non il
+target di accuratezza: risultati `UNDECIDABLE`, `RETRY` o
+`REVIEW_REQUIRED` sono quindi intenzionali.
+
+Per arrestare `make frontend` o `make dev`, premi `Ctrl+C` nel terminale.
 
 ## Project status
 
-This project is currently an early-stage prototype.
+This project is currently an engineering MVP with an integrated static
+frontend, browser microphone streaming, versioned decision pipeline and
+production scaffolding. It is not clinically validated.
 
 Implemented:
 
@@ -28,23 +96,31 @@ Implemented:
 - explicit `CORRECT`, `INCORRECT`, `UNDECIDABLE`, and `RETRY` outcomes;
 - deterministic English prompt composition for the current vocabulary;
 - rolling 40 ms streaming observations with background DTW refreshes;
-- sentence-benchmark streaming with live error localization over Redis;
+- utterance-final wav2vec2/XLS-R phoneme inference adapter;
+- internal CTC Viterbi forced alignment with per-phone spans and scores;
+- conservative quality → identity → alignment → phone decision cascade;
+- sentence-benchmark streaming with live phrase scoring and per-word updates;
 - a runnable local worker path for WAV evaluation;
+- static gamified frontend with mock and real-backend modes;
+- browser microphone capture, resampling and exact 40 ms PCM streaming;
+- authenticated review queue, decision audit trail and Prometheus metrics;
+- Docker/Compose/Kubernetes deployment artifacts and health probes;
 - unit, integration, black-box, and cleaning-performance tests.
 
-Still to be integrated:
+Still to be integrated or validated:
 
-- voice activity detection and word-boundary segmentation;
-- a real phonetic pronunciation engine;
-- forced alignment for evaluating words inside continuous sentences;
-- live Redis word-window orchestration around the runnable evaluation path;
-- authentication, consent, retention, and production deployment controls;
-- a client application.
+- production-grade adaptive VAD and word-boundary segmentation;
+- learner-speech calibration and speaker-disjoint phonetic validation;
+- annotated learner-speech validation and clinical review;
+- production identity provider and jurisdiction-specific retention controls;
+- supported-browser microphone QA and production soak testing.
 
-The current `PronunciationEngine` remains a protocol for a future phonetic
-model. The new acoustic baseline is intentionally separate: it measures
-distance from observed English word examples and does not claim to recognize
-phonemes.
+The phonetic path uses
+`facebook/wav2vec2-xlsr-53-espeak-cv-ft` behind `PhonemeModel`, followed by an
+internal CTC Viterbi aligner. It runs on a complete isolated word or known
+sentence utterance. Its thresholds are explicitly marked uncalibrated until
+labelled learner speech is available, so missing or weak evidence yields
+`UNDECIDABLE`.
 
 ## Architecture
 
@@ -55,8 +131,10 @@ Isolated-word evaluation
 
 Live observation
     40 ms PCM frames -> FastAPI WebSocket -> rolling audio window
-                                          -> background DTW observations
-                                          -> provisional client events
+                                          -> voice-activity progress events
+                                          -> background phonetic refreshes
+                                          -> stable per-word updates
+                                          -> final sentence verdict
 
 Known-sentence benchmark
     40 ms PCM frames -> Redis Stream: audio:{session_id}
@@ -158,17 +236,16 @@ optional `FT.SEARCH` index.
 Start the API:
 
 ```bash
-uv run uvicorn app.api:app \
-  --host 127.0.0.1 \
-  --port 8000 \
-  --env-file .env \
-  --reload
+make api
 ```
 
 Available endpoints:
 
 - `GET /health`
 - `GET /health/redis`
+- `GET /health/sqlite`
+- `GET /metrics`
+- `GET /ui/`
 - `WS /sessions/{session_id}/events`
 - `WS /streaming/sessions/{session_id}`
 - interactive FastAPI documentation at `/docs`
@@ -234,6 +311,81 @@ make test
 make redis
 make api
 make build-demo
+```
+
+Install the optional phonetic backend. On a new machine, populate its cache
+once with the dedicated cache command:
+
+```bash
+uv sync --extra phonetic
+uv run python -m scripts.cache_phoneme_model \
+  --cache-dir data/model-cache
+```
+
+The repository's `data/model-cache` is already complete when the sentence
+evaluator reports `sentence evaluator: ready`; no download command is then
+needed. Start the real phrase UI instead:
+
+```bash
+make redis
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 make dev
+```
+
+Open <http://localhost:8765>, start the session, and pronounce the complete
+sentence displayed by the UI. The `streaming_demo bird` command is a separate
+low-level word diagnostic and is not part of this browser flow.
+
+For the WebSocket service, cache the model first and start the API with
+`PHONETIC_ENABLED=true`. The server deliberately uses local cached files only;
+it never downloads a 1.26 GB model as a side effect of handling a request.
+
+### Browser sentence-pronunciation flow
+
+The browser sends a complete known phrase plus one pedagogical focus word:
+
+```json
+{
+  "type": "session.start",
+  "target_words": ["bird"],
+  "expected_text": "A happy bird can fly",
+  "locale": "en-US"
+}
+```
+
+With `expected_text`, the phonetic backend force-aligns and scores **every
+phone in the complete phrase**. The target remains the focus word reported in
+feedback; it does not limit evaluation to that word. Saying the focus word
+inside unrelated or incomplete speech is not sufficient for `CORRECT`.
+
+The runtime does three things in parallel:
+
+1. `pronunciation.progress` reports microphone activity and keeps the listener
+   state alive.
+2. The phonetic backend refreshes progressive sentence windows in the
+   background. When a word boundary is stable enough, it emits
+   `stream.inference.partial.word_updates` with the word index, status, score
+   and phone-level evidence.
+3. The frontend consumes those updates in order, growing the mandala on
+   `CORRECT`, shrinking it on `INCORRECT`, and marking low-confidence words
+   without pretending the sentence is finished.
+
+Rendering interpolates toward the new layer target on every animation frame, so
+inference cadence does not produce visual jumps. Recording ends on a second
+microphone tap or after about 1.6 seconds of trailing silence. The final
+`pronunciation.evaluated` event is delivered on both sockets and deduplicated by
+`attempt_id`, so the result is stable even if one transport arrives late.
+
+The phonetic backend is opt-in because its dependencies and model are large.
+Install/cache it as shown above, then set `PHONETIC_ENABLED=true` in `.env`
+before running `make api` or `make dev`. With Docker, the image must likewise
+include the `phonetic` extra and a local model cache; keep
+`PHONETIC_ENABLED=false` in lightweight deployments.
+
+The UI derives `ws://` or `wss://` from the page protocol and uses port 8000 on
+the current hostname. To select another API authority:
+
+```text
+http://localhost:8765/?api=192.168.1.20:8000
 ```
 
 ## Audio and cleaning contract
