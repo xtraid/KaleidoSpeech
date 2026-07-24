@@ -230,7 +230,7 @@ def _spectral_denoise(
     return cleaned[: len(samples)].astype(np.float32)
 
 
-def clean_audio(
+def clean_wav_files(
     input_path: Path,
     output_path: Path,
     report_path: Path,
@@ -400,6 +400,11 @@ def clean_audio(
     return report
 
 
+# Backwards-compatible name. New code should use ``clean_wav_files`` to make
+# the file-based contract explicit.
+clean_audio = clean_wav_files
+
+
 def main() -> None:
 
     parser = argparse.ArgumentParser(
@@ -414,7 +419,7 @@ def main() -> None:
         help="Percorso del report JSON",
     )
     arguments = parser.parse_args()
-    clean_audio(arguments.input, arguments.output, arguments.report)
+    clean_wav_files(arguments.input, arguments.output, arguments.report)
 
 
 if __name__ == "__main__":
