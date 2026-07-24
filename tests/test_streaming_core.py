@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 import json
 
+import pytest
+
 from app.audio_producer import split_pcm
 from app.benchmark_repository import find_benchmark, save_attempt
 from app.config import get_settings
@@ -99,6 +101,10 @@ def test_redis_frame_metadata_stream_limit_and_session_ttl(monkeypatch) -> None:
     xadd = fake.calls[0]
     assert xadd[1] == "audio:session-test"
     assert xadd[2][b"sequence"] == b"7"
+    assert xadd[2][b"captured_at_ns"] == b"123"
+    assert xadd[2][b"sample_rate"] == b"16000"
+    assert xadd[2][b"frame_ms"] == b"40"
+    assert xadd[2][b"pcm_s16le"] == bytes(settings.bytes_per_frame)
     assert xadd[3]["maxlen"] == settings.max_stream_length
     assert (
         "expire",
@@ -108,3 +114,27 @@ def test_redis_frame_metadata_stream_limit_and_session_ttl(monkeypatch) -> None:
 
     hset = next(call for call in fake.calls if call[0] == "hset")
     assert json.loads(hset[2]["phase"]) == "listening"
+
+
+def test_word_window_requires_real_contiguous_redis_frames() -> None:
+    from app.worker import assemble_word_window
+
+    settings = get_settings()
+
+    def record(sequence: int) -> dict[bytes, bytes]:
+        return {
+            b"sequence": str(sequence).encode(),
+            b"captured_at_ns": str(123 + sequence).encode(),
+            b"sample_rate": str(settings.sample_rate).encode(),
+            b"frame_ms": str(settings.frame_ms).encode(),
+            b"pcm_s16le": bytes([sequence]) * settings.bytes_per_frame,
+        }
+
+    records = [record(4), record(5)]
+    assert assemble_word_window(records) == (
+        records[0][b"pcm_s16le"] + records[1][b"pcm_s16le"]
+    )
+
+    records[1][b"sequence"] = b"6"
+    with pytest.raises(ValueError, match="not contiguous"):
+        assemble_word_window(records)

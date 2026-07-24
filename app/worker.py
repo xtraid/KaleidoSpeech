@@ -16,9 +16,51 @@ from app.benchmark_repository import (
 )
 from app.pronunciation_engine import PronunciationResult
 from app.redis_bus import client, publish_ui_event, update_session_state
+from app.config import get_settings
 
 
 FrameProcessor = Callable[[str, int, bytes], None]
+
+
+def parse_audio_frame(fields: dict[bytes, bytes]) -> tuple[int, bytes]:
+    """Validate and decode exactly one record from the Redis audio stream."""
+    settings = get_settings()
+    required = {
+        b"sequence",
+        b"captured_at_ns",
+        b"sample_rate",
+        b"frame_ms",
+        b"pcm_s16le",
+    }
+    missing = required.difference(fields)
+    if missing:
+        names = ", ".join(sorted(field.decode() for field in missing))
+        raise ValueError(f"Redis audio frame is missing: {names}")
+
+    if int(fields[b"sample_rate"]) != settings.sample_rate:
+        raise ValueError("Redis audio frame has an unexpected sample rate")
+    if int(fields[b"frame_ms"]) != settings.frame_ms:
+        raise ValueError("Redis audio frame has an unexpected duration")
+
+    pcm = fields[b"pcm_s16le"]
+    if len(pcm) != settings.bytes_per_frame:
+        raise ValueError(
+            f"Expected {settings.bytes_per_frame} PCM bytes, got {len(pcm)}"
+        )
+    return int(fields[b"sequence"]), pcm
+
+
+def assemble_word_window(records: list[dict[bytes, bytes]]) -> bytes:
+    """Concatenate an ordered, contiguous Redis frame sequence."""
+    if not records:
+        raise ValueError("A word window must contain at least one frame")
+
+    decoded = [parse_audio_frame(fields) for fields in records]
+    sequences = [sequence for sequence, _ in decoded]
+    expected = list(range(sequences[0], sequences[0] + len(sequences)))
+    if sequences != expected:
+        raise ValueError("Redis audio frame sequence is not contiguous")
+    return b"".join(pcm for _, pcm in decoded)
 
 
 def get_benchmark(language: str, word: str) -> Benchmark | None:
@@ -77,8 +119,7 @@ def consume_frames(
 
         for _, messages in batches:
             for message_id, fields in messages:
-                sequence = int(fields[b"sequence"])
-                pcm = fields[b"pcm_s16le"]
+                sequence, pcm = parse_audio_frame(fields)
                 process_frame(session_id, sequence, pcm)
                 client.xack(stream, group, message_id)
 

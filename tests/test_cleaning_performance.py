@@ -6,7 +6,7 @@ from time import perf_counter
 
 import numpy as np
 
-from cleaning_contract import clean_redis_record
+from cleaning_contract import clean_redis_records
 
 
 def test_cleaning_is_faster_than_real_time(
@@ -14,17 +14,19 @@ def test_cleaning_is_faster_than_real_time(
 ) -> None:
     iterations = 10
     elapsed: list[float] = []
-    redis_record = benchmark_case["redis_record"]
-    assert isinstance(redis_record, dict)
+    redis_records = benchmark_case["redis_records"]
+    input_pcm = benchmark_case["input_pcm_s16le"]
+    assert isinstance(redis_records, list)
+    assert isinstance(input_pcm, bytes)
 
     for _ in range(iterations):
         started = perf_counter()
-        clean_redis_record(redis_record)
+        clean_redis_records(redis_records)
         elapsed.append(perf_counter() - started)
 
     mean_seconds = float(np.mean(elapsed))
     p95_seconds = float(np.percentile(elapsed, 95))
-    input_duration_seconds = len(redis_record[b"audio"]) / np.dtype(np.float32).itemsize / 16_000
+    input_duration_seconds = len(input_pcm) / np.dtype("<i2").itemsize / 16_000
 
     assert mean_seconds / input_duration_seconds < 1.0, (
         f"cleaning is slower than real time: mean={mean_seconds:.3f}s, "

@@ -83,26 +83,29 @@ uv run pytest
 
 ## Black-box cleaning contract
 
-The cleaning implementation is intentionally not part of this repository yet.
-The acceptance suite treats it as a black box:
+The acceptance suite treats the cleaning implementation as a black box using
+the same records emitted by the Redis producer:
 
 ```text
-Legacy Redis record ({b"audio": mono 16 kHz float32 bytes})
+Redis Stream records ({sequence, captured_at_ns, sample_rate, frame_ms,
+                       pcm_s16le})
+    -> validation and contiguous word-window aggregation
     -> public cleaning function
-    -> canonical mono 16 kHz float32 bytes for the solver
+    -> canonical mono 16 kHz signed int16 little-endian PCM
+    -> pronunciation engine
 ```
 
-This is the current colleague-facing cleaning-test contract. The streaming
-transport now follows the implementation guide and emits `pcm_s16le` int16
-frames instead. The worker's future word-window aggregator must concatenate
-those frames and adapt the completed window to the cleaner's public input
-format. Individual 40 ms frames must never be evaluated as words.
+Each Redis record contains one 40 ms frame (640 samples, 1280 bytes). Cleaning
+and pronunciation evaluation receive a complete word window assembled from
+ordered, contiguous frames; individual frames are never evaluated as words.
+The cleaning pipeline may use normalized float32 samples internally, but
+float32 is not part of any public boundary.
 
 By default the suite expects:
 
 ```python
 app.cleaning.clean_audio(
-    audio: bytes
+    pcm_s16le: bytes
 ) -> bytes
 ```
 
@@ -114,12 +117,15 @@ CLEANING_ENTRYPOINT=package.module:function uv run pytest
 ```
 
 The fixtures use four real noisy/clean pairs and their official transcripts from
-the public VoiceBank-DEMAND test set. The noisy tracks are converted to the
-record Redis currently provides; clean tracks and transcripts remain test
-oracles and are never passed to the cleaner. Tests inspect only the bytes
-consumed by the solver: format, finite values, peak limit, DC offset, duration,
-determinism, silence rejection, and faster-than-real-time execution. They do not
-inspect or prescribe the cleaning algorithm.
+the public VoiceBank-DEMAND test set. Tests quantize the noisy source to int16,
+split it into the exact records published to Redis, aggregate the records and
+inspect only the bytes consumed by the pronunciation engine. Clean tracks and
+transcripts remain test oracles and are never passed to the cleaner.
+
+SQLite stores benchmark definitions and final pronunciation attempts; audio is
+ephemeral and stays in Redis. The contract integration test covers Redis record
+aggregation, cleaning, pronunciation-engine invocation and final SQLite
+persistence.
 
 ## Security
 

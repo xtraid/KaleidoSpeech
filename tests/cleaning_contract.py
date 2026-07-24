@@ -6,6 +6,8 @@ from collections.abc import Callable
 from importlib import import_module
 import os
 
+from app.worker import assemble_word_window
+
 
 Cleaner = Callable[..., bytes]
 
@@ -34,7 +36,7 @@ def load_cleaner() -> Cleaner:
     return cleaner
 
 
-def clean_redis_record(record: dict[bytes, bytes]) -> bytes:
-    """Adapt one Redis record to the agreed public cleaning call."""
+def clean_redis_records(records: list[dict[bytes, bytes]]) -> bytes:
+    """Adapt real Redis stream records to one complete cleaning call."""
     cleaner = load_cleaner()
-    return cleaner(record[b"audio"])
+    return cleaner(assemble_word_window(records))

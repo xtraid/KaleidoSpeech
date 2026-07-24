@@ -13,13 +13,16 @@ Directory layout:
 
 - `source/noisy`: original noisy WAV from the public demo;
 - `source/clean`: paired clean reference WAV;
-- `redis`: noisy input converted to headerless mono 16 kHz float32 little-endian,
-  exactly matching the current Redis `audio` field;
+- `redis`: normalized 16 kHz source material used to generate signed int16
+  little-endian Redis frames during the tests;
 - `reference`: clean audio converted in the same way, used only as an oracle;
 - `transcripts`: official test-set transcripts.
 
-The test suite gives only `redis/<id>.f32` to the cleaning implementation.
-Neither the clean reference nor the transcript is visible to the cleaner.
+The test suite quantizes `redis/<id>.f32` to signed int16, splits it into 40 ms
+frames and builds records with the exact `sequence`, `captured_at_ns`,
+`sample_rate`, `frame_ms` and `pcm_s16le` fields used by the application.
+Only the aggregated `pcm_s16le` word window reaches the cleaner. Neither the
+clean reference nor the transcript is visible to it.
 
 Source: Cassia Valentini-Botinhao, *Noisy speech database for training speech
 enhancement algorithms and TTS models*, University of Edinburgh, 2017,
