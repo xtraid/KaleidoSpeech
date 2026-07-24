@@ -1,0 +1,7 @@
+materiale_precedente/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.env
+

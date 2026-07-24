@@ -1,0 +1,28 @@
+[project]
+name = "advx-speech-service"
+version = "0.1.0"
+description = "Speech service for pronunciation audio streaming and benchmarking"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115,<1",
+    "numpy>=2.0,<3",
+    "pydantic>=2.8,<3",
+    "redis>=5,<7",
+    "sounddevice>=0.5,<1",
+    "uvicorn[standard]>=0.30,<1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8,<10",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
