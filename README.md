@@ -27,6 +27,8 @@ Implemented:
 - robust per-word acoustic prototypes and calibrated decision thresholds;
 - explicit `CORRECT`, `INCORRECT`, `UNDECIDABLE`, and `RETRY` outcomes;
 - deterministic English prompt composition for the current vocabulary;
+- rolling 40 ms streaming observations with background DTW refreshes;
+- sentence-benchmark streaming with live error localization over Redis;
 - a runnable local worker path for WAV evaluation;
 - unit, integration, black-box, and cleaning-performance tests.
 
@@ -47,18 +49,30 @@ phonemes.
 ## Architecture
 
 ```text
-Microphone producer
-    -> Redis Stream: audio:{session_id}
-    -> validation and contiguous word-window aggregation
-    -> audio cleaning
-    -> pronunciation engine (to be integrated)
-    -> SQLite final attempt
-    -> Redis Stream: session:{session_id}:events
-    -> FastAPI WebSocket
+Isolated-word evaluation
+    WAV -> cleaning -> MFCC trajectory -> DTW benchmarks -> decision
+                                      \-> SQLite attempts and provenance
+
+Live observation
+    40 ms PCM frames -> FastAPI WebSocket -> rolling audio window
+                                          -> background DTW observations
+                                          -> provisional client events
+
+Known-sentence benchmark
+    40 ms PCM frames -> Redis Stream: audio:{session_id}
+                     -> incremental alignment and error confirmation
+                     -> Redis Stream: session:{session_id}:events
+                     -> FastAPI WebSocket
+
+Future continuous-speech scoring
+    segmented word windows -> cleaning -> phonetic/forced-alignment engine
+                                      -> SQLite final attempt
 ```
 
 Redis contains ephemeral audio, session state, and UI events. SQLite contains
-durable benchmark definitions and final pronunciation attempts.
+durable benchmark definitions, feature provenance, calibrated thresholds, and
+final pronunciation attempts. Streaming distance events are observations rather
+than clinical or educational diagnoses.
 
 ## Requirements
 
