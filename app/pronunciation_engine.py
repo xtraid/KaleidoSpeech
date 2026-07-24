@@ -1,12 +1,25 @@
-"""Pronunciation analysis domain service."""
+"""Contract for a real phonetic pronunciation engine."""
 
-import numpy as np
+from dataclasses import dataclass
+from typing import Protocol
 
 
-def score(audio: bytes) -> float:
-    """Return a placeholder normalized energy score for an audio chunk."""
-    samples = np.frombuffer(audio, dtype=np.float32)
-    if samples.size == 0:
-        return 0.0
-    return float(np.clip(np.sqrt(np.mean(np.square(samples))), 0.0, 1.0))
+@dataclass(frozen=True)
+class PronunciationResult:
+    detected_phonemes: list[str]
+    phoneme_confidences: list[float]
+    overall_confidence: float
+    score: float | None
+    engine_version: str
 
+
+class PronunciationEngine(Protocol):
+    def evaluate(
+        self,
+        pcm_s16le: bytes,
+        sample_rate: int,
+        expected_phonemes: list[str],
+        accepted_variants: list[list[str]],
+    ) -> PronunciationResult:
+        """Evaluate one complete word window, never an individual frame."""
+        ...
