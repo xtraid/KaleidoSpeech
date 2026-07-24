@@ -1,25 +1,39 @@
 # advX Speech Service
 
-Servizio Python per acquisire audio dal microfono, distribuirlo tramite Redis
-Streams, analizzare la pronuncia e salvare i risultati in SQLite.
+Python service for capturing microphone audio, publishing it through Redis
+Streams, analyzing pronunciation, and storing results in SQLite.
 
-## Requisiti
+## Requirements
 
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - Docker
-- PortAudio
+- PortAudio on Linux
 
-Il progetto usa Python 3.11+, Redis 7+ e SQLite, già incluso in Python.
+Python does not need to be installed manually: `uv sync` downloads the required
+Python version, creates `.venv`, and installs every Python dependency from
+`pyproject.toml` using the exact versions in `uv.lock`.
 
-Su Arch/CachyOS, PortAudio si installa con:
+### CachyOS / Arch Linux
 
 ```bash
-sudo pacman -S portaudio
+sudo pacman -S uv portaudio docker
+sudo systemctl enable --now docker
 ```
 
-## Configurazione
+### macOS
 
-Dalla root del repository:
+Install [Docker Desktop](https://docs.docker.com/desktop/setup/install/mac-install/)
+and uv:
+
+```bash
+brew install uv
+```
+
+The `sounddevice` package installed by `uv sync` includes PortAudio on macOS.
+
+## Setup
+
+From the repository root:
 
 ```bash
 uv sync
@@ -27,10 +41,7 @@ cp .env.example .env
 uv run python -m scripts.init_db
 ```
 
-`uv sync` installa automaticamente Python, crea `.venv` e sincronizza le
-dipendenze definite in `pyproject.toml` e `uv.lock`.
-
-Avvia Redis:
+Start Redis:
 
 ```bash
 docker run --name advx-redis \
@@ -39,22 +50,28 @@ docker run --name advx-redis \
   redis-server --appendonly yes
 ```
 
-## Avvio
+After the first run, restart the existing container with:
+
+```bash
+docker start advx-redis
+```
+
+## Run
 
 ```bash
 uv run uvicorn app.api:app --host 127.0.0.1 --port 8000 --env-file .env --reload
 ```
 
-API: <http://127.0.0.1:8000> · Documentazione: <http://127.0.0.1:8000/docs>
+API: <http://127.0.0.1:8000> · Docs: <http://127.0.0.1:8000/docs>
 
-## Test
+Run the tests with:
 
 ```bash
 uv run pytest
 ```
 
-## Sicurezza
+## Security
 
-Audio e dati personali, soprattutto se relativi a minori, non devono essere
-esposti pubblicamente. In produzione sono necessari autenticazione, TLS,
-controllo degli accessi, consenso e policy di retention adeguate.
+Audio and personal data, especially data involving minors, must not be exposed
+publicly. Production deployments require authentication, TLS, access control,
+appropriate consent, and retention policies.
