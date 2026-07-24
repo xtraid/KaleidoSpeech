@@ -8,7 +8,9 @@ dependencies = [
     "numpy>=2.0,<3",
     "pydantic>=2.8,<3",
     "redis>=5,<7",
+    "scipy>=1.14,<2",
     "sounddevice>=0.5,<1",
+    "soundfile>=0.13,<1",
     "uvicorn[standard]>=0.30,<1",
 ]
 
