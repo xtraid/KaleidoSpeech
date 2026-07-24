@@ -1,7 +1,54 @@
 # advX Speech Service
 
-Python service for capturing microphone audio, publishing it through Redis
-Streams, analyzing pronunciation, and storing results in SQLite.
+Backend prototype for a pronunciation-training application. The service captures
+microphone audio, publishes canonical PCM frames through Redis Streams, cleans
+complete word windows, stores pronunciation benchmarks and attempts in SQLite,
+and exposes session events through a FastAPI WebSocket.
+
+## Project status
+
+This project is currently an early-stage prototype.
+
+Implemented:
+
+- microphone capture as mono 16 kHz signed 16-bit little-endian PCM;
+- 40 ms audio frames published to Redis Streams;
+- validation and aggregation of contiguous frames into complete word windows;
+- deterministic audio-cleaning pipeline;
+- SQLite schema and repositories for benchmarks and pronunciation attempts;
+- Redis-backed session state, benchmark cache, and UI event streams;
+- FastAPI health endpoint and WebSocket event forwarding;
+- unit, integration, black-box, and cleaning-performance tests.
+
+Still to be integrated:
+
+- voice activity detection and word-boundary segmentation;
+- a real phonetic pronunciation engine;
+- the end-to-end worker that connects aggregation, cleaning, evaluation, and
+  persistence;
+- authentication, consent, retention, and production deployment controls;
+- a client application.
+
+The current `PronunciationEngine` is a protocol (an interface contract), not an
+implemented speech-recognition model. Likewise, `app.worker` provides reusable
+consumer and persistence primitives but is not yet a standalone end-to-end
+worker.
+
+## Architecture
+
+```text
+Microphone producer
+    -> Redis Stream: audio:{session_id}
+    -> validation and contiguous word-window aggregation
+    -> audio cleaning
+    -> pronunciation engine (to be integrated)
+    -> SQLite final attempt
+    -> Redis Stream: session:{session_id}:events
+    -> FastAPI WebSocket
+```
+
+Redis contains ephemeral audio, session state, and UI events. SQLite contains
+durable benchmark definitions and final pronunciation attempts.
 
 ## Requirements
 
@@ -10,8 +57,8 @@ Streams, analyzing pronunciation, and storing results in SQLite.
 - PortAudio on Linux
 
 Python does not need to be installed manually: `uv sync` downloads the required
-Python version, creates `.venv`, and installs every Python dependency from
-`pyproject.toml` using the exact versions in `uv.lock`.
+Python version, creates `.venv`, and installs the dependencies declared in
+`pyproject.toml` at the versions resolved in `uv.lock`.
 
 ### CachyOS / Arch Linux
 
@@ -41,6 +88,9 @@ cp .env.example .env
 uv run python -m scripts.init_db
 ```
 
+The initialization command creates the SQLite schema and seeds the initial
+Italian benchmark for `cane`. It is safe to run more than once.
+
 Start Redis:
 
 ```bash
@@ -56,14 +106,23 @@ After the first run, restart the existing container with:
 docker start advx-redis
 ```
 
-## Run
+## Run the available components
+
+Start the API:
 
 ```bash
-uv run uvicorn app.api:app --host 127.0.0.1 --port 8000 --env-file .env --reload
+uv run uvicorn app.api:app \
+  --host 127.0.0.1 \
+  --port 8000 \
+  --env-file .env \
+  --reload
 ```
 
-Once the service is running locally, the FastAPI documentation is available at
-`/docs`.
+Available endpoints:
+
+- `GET /health`
+- `WS /sessions/{session_id}/events`
+- interactive FastAPI documentation at `/docs`
 
 Capture and publish microphone frames:
 
@@ -71,64 +130,64 @@ Capture and publish microphone frames:
 uv run python -m app.audio_producer
 ```
 
-The producer generates a server-side UUID and publishes to
-`audio:{session_id}`. Audio is mono PCM signed 16-bit little-endian at 16 kHz,
-split into 40 ms frames (640 samples and 1280 bytes).
+The producer generates a server-side UUID and prints it to the terminal. Press
+Enter to stop capturing. Frames are published to `audio:{session_id}`.
 
-Run the tests with:
+Running these two processes does not yet produce a pronunciation score: the
+voice-activity/word segmentation and pronunciation-engine integration are still
+pending.
 
-```bash
-uv run pytest
-```
+## Audio and cleaning contract
 
-## Black-box cleaning contract
-
-The acceptance suite treats the cleaning implementation as a black box using
-the same records emitted by the Redis producer:
+Every Redis audio record contains:
 
 ```text
-Redis Stream records ({sequence, captured_at_ns, sample_rate, frame_ms,
-                       pcm_s16le})
-    -> validation and contiguous word-window aggregation
-    -> public cleaning function
-    -> canonical mono 16 kHz signed int16 little-endian PCM
-    -> pronunciation engine
+sequence, captured_at_ns, sample_rate, frame_ms, pcm_s16le
 ```
 
-Each Redis record contains one 40 ms frame (640 samples, 1280 bytes). Cleaning
-and pronunciation evaluation receive a complete word window assembled from
-ordered, contiguous frames; individual frames are never evaluated as words.
-The cleaning pipeline may use normalized float32 samples internally, but
-float32 is not part of any public boundary.
+Each record represents one 40 ms frame: 640 mono samples and 1280 bytes at
+16 kHz. Cleaning and pronunciation evaluation operate on a complete word window
+assembled from ordered, contiguous records; individual frames are never treated
+as words.
 
-By default the suite expects:
+The public cleaning boundary is:
 
 ```python
-app.cleaning.clean_audio(
-    pcm_s16le: bytes
-) -> bytes
+app.cleaning.clean_audio(pcm_s16le: bytes) -> bytes
 ```
 
-If the colleague uses another public entrypoint, select it without changing the
-tests:
+Both input and output are canonical mono 16 kHz signed int16 little-endian PCM.
+The implementation may use normalized float32 samples internally, but float32
+is not part of the public boundary.
+
+The black-box suite can test a compatible alternative implementation without
+changing the tests:
 
 ```bash
 CLEANING_ENTRYPOINT=package.module:function uv run pytest
 ```
 
-The fixtures use four real noisy/clean pairs and their official transcripts from
-the public VoiceBank-DEMAND test set. Tests quantize the noisy source to int16,
-split it into the exact records published to Redis, aggregate the records and
-inspect only the bytes consumed by the pronunciation engine. Clean tracks and
-transcripts remain test oracles and are never passed to the cleaner.
+Cleaning fixtures contain four public noisy/clean VoiceBank-DEMAND pairs and
+their official transcripts. The clean tracks and transcripts are test oracles;
+they are never passed to the cleaner.
 
-SQLite stores benchmark definitions and final pronunciation attempts; audio is
-ephemeral and stays in Redis. The contract integration test covers Redis record
-aggregation, cleaning, pronunciation-engine invocation and final SQLite
-persistence.
+## Tests
+
+Run the complete suite:
+
+```bash
+uv run pytest
+```
+
+The suite covers API health, audio framing, Redis adapter behavior, SQLite
+transactions and input handling, cleaning quality and performance, contiguous
+word-window aggregation, pronunciation-engine invocation, and final attempt
+persistence. Most tests use isolated databases and Redis doubles; tests that
+need a live Redis instance are skipped when it is unavailable.
 
 ## Security
 
 Audio and personal data, especially data involving minors, must not be exposed
-publicly. Production deployments require authentication, TLS, access control,
-appropriate consent, and retention policies.
+publicly. The current service binds locally by default and is not
+production-ready. A production deployment requires authentication, TLS, access
+control, appropriate consent, retention policies, and secrets management.
