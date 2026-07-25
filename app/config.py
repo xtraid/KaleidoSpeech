@@ -19,6 +19,7 @@ class Settings(BaseModel):
     dtype: str = "int16"
     redis_url: str = "redis://localhost:6379/0"
     sqlite_path: Path = PROJECT_ROOT / "data" / "pronunciation.sqlite3"
+    decision_registry_path: Path = PROJECT_ROOT / "config" / "decision_models.json"
     session_ttl_seconds: int = Field(default=900, gt=0)
     max_stream_length: int = Field(default=2_000, gt=0)
     phonetic_enabled: bool = False
@@ -59,6 +60,14 @@ def get_settings() -> Settings:
     )
     if not sqlite_path.is_absolute():
         sqlite_path = PROJECT_ROOT / sqlite_path
+    decision_registry_path = Path(
+        os.getenv(
+            "DECISION_REGISTRY_PATH",
+            str(PROJECT_ROOT / "config" / "decision_models.json"),
+        )
+    )
+    if not decision_registry_path.is_absolute():
+        decision_registry_path = PROJECT_ROOT / decision_registry_path
 
     return Settings(
         app_host=os.getenv("APP_HOST", "127.0.0.1"),
@@ -67,6 +76,7 @@ def get_settings() -> Settings:
         frame_ms=os.getenv("FRAME_MS", "40"),
         redis_url=os.getenv("REDIS_URL", "redis://localhost:6379/0"),
         sqlite_path=sqlite_path,
+        decision_registry_path=decision_registry_path,
         session_ttl_seconds=os.getenv("SESSION_TTL_SECONDS", "900"),
         max_stream_length=os.getenv("MAX_STREAM_LENGTH", "2000"),
         phonetic_enabled=os.getenv("PHONETIC_ENABLED", "false").casefold()

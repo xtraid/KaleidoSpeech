@@ -19,6 +19,18 @@ def load_registry(path: Path) -> dict[str, Any]:
     return registry
 
 
+def resolve_active_model(path: Path) -> dict[str, Any]:
+    """Return and validate the complete active decision-model entry."""
+    registry = load_registry(path)
+    version = registry["active"]
+    model = dict(registry["models"][version])
+    model["version"] = version
+    kind = model.get("kind")
+    if kind not in {"rule_based", "weighted_ensemble"}:
+        raise ValueError(f"Unsupported active model kind: {kind!r}")
+    return model
+
+
 def activate_model(path: Path, version: str) -> None:
     registry = load_registry(path)
     model = registry["models"].get(version)

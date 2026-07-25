@@ -4,6 +4,10 @@ from functools import lru_cache
 
 from app.lexicon import EN_US_LEXICON, EN_US_SENTENCE_LEXICON
 from app.config import get_settings
+from app.ensemble_inference import (
+    get_ensemble_decision_engine,
+    voice_frame_ratio,
+)
 from app.phonetic_pipeline import (
     DtwWordIdentityGate,
     PronunciationPipeline,
@@ -37,7 +41,17 @@ def get_final_evaluator() -> FinalEvaluator:
         lexicon=EN_US_LEXICON,
         audio_preprocessor=cleaning_audio_preprocessor,
     )
-    return lambda pcm, word: pipeline.evaluate(pcm, word).as_dict()
+    ensemble = get_ensemble_decision_engine()
+
+    def evaluate(pcm: bytes, word: str) -> dict:
+        result = pipeline.evaluate(pcm, word).as_dict()
+        return ensemble.evaluate(
+            result,
+            pcm,
+            voice_frame_ratio=voice_frame_ratio(pcm),
+        )
+
+    return evaluate
 
 
 @lru_cache(maxsize=1)
@@ -47,6 +61,7 @@ def get_sentence_final_evaluator():
         lexicon=EN_US_SENTENCE_LEXICON,
         audio_preprocessor=cleaning_audio_preprocessor,
     )
+    ensemble = get_ensemble_decision_engine()
 
     def evaluate(pcm: bytes, text: str, word: str) -> dict:
         result = pipeline.evaluate(pcm, text, word).as_dict()
@@ -76,6 +91,26 @@ def get_sentence_final_evaluator():
                 "phones": word_phones,
             })
         result["words"] = words
-        return result
+        target_pcm = _target_word_pcm(pcm, words, word)
+        return ensemble.evaluate(
+            result,
+            target_pcm,
+            voice_frame_ratio=voice_frame_ratio(target_pcm),
+        )
 
     return evaluate
+
+
+def _target_word_pcm(pcm: bytes, words: list[dict], target_word: str) -> bytes:
+    """Slice the forced-aligned focus word for word-level benchmark scorers."""
+    for word in words:
+        if str(word.get("word", "")).casefold() != target_word.casefold():
+            continue
+        phones = word.get("phones") or []
+        if not phones:
+            return b""
+        start_ms = max(0, min(int(phone["start_ms"]) for phone in phones) - 20)
+        end_ms = max(int(phone["end_ms"]) for phone in phones) + 20
+        bytes_per_ms = 32  # mono 16 kHz signed int16
+        return pcm[start_ms * bytes_per_ms:end_ms * bytes_per_ms]
+    return b""

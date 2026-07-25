@@ -34,6 +34,7 @@ from app.decision_repository import (
     save_decision_log,
 )
 from app.frontend_contract import pronunciation_evaluated_event
+from app.ensemble_inference import get_ensemble_decision_engine
 from app.metrics import exposition, observe_decision
 from app.observability import configure_logging, correlation_middleware
 from app.phonetic_runtime import (
@@ -56,6 +57,7 @@ active_websockets: set[WebSocket] = set()
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     configure_logging()
+    await asyncio.to_thread(get_ensemble_decision_engine)
     if get_settings().phonetic_enabled:
         # Pay the model load/optional quantization cost before the first
         # microphone attempt instead of blocking session.start.
