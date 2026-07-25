@@ -170,6 +170,14 @@ class StreamingInferenceSession:
             else None
         )
         self._emitted_sentence_words: set[int] = set()
+    def _shutdown_executors(self) -> None:
+        if self._executor is not None:
+            self._executor.shutdown(wait=False, cancel_futures=True)
+        if self._sentence_executor is not None:
+            self._sentence_executor.shutdown(wait=False, cancel_futures=True)
+
+    def __del__(self) -> None:
+        self._shutdown_executors()
 
     @property
     def pcm(self) -> bytes:
@@ -324,6 +332,11 @@ class StreamingInferenceSession:
                 }
                 for index, token in enumerate(tokens)
             ]
+
+            if self._emitted_sentence_words:
+                current_word_index = max(self._emitted_sentence_words) + 1
+                if current_word_index >= len(tokens):
+                    current_word_index = len(tokens) - 1
         return {
             "type": "stream.inference.partial",
             "sequence": len(self._frames),
