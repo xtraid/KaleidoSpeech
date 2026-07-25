@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Pronunciation Practice</title>
+<title>KaleidoSpeech</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%233b82f6'/><circle cx='16' cy='16' r='8' fill='%23fff' opacity='0.9'/><circle cx='16' cy='16' r='4' fill='%232563eb'/></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; }
@@ -1878,7 +1879,7 @@ if (CONFIG.useMock) {
   setUIState('ready');
   state.sessionId = generateSessionId();
 } else {
-  setUIState('idle');
+  connectWebSocket();
 }
 requestAnimationFrame(loop);
 </script>
