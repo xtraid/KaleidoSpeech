@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Pronunciation Practice</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔮</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; }
@@ -58,10 +59,7 @@
     pointer-events: none;
     z-index: 1;
   }
-  .top-bar, .word-wrap, .kaleido-wrap, .mic-area, .controls, .result-area {
-    position: relative;
-    z-index: 2;
-  }
+  .top-bar, .word-wrap, .kaleido-wrap, .controls, .result-area { position: relative; z-index: 2; }
   @media (max-width: 480px) {
     body { background: #f5f3ee; }
     .phone {
@@ -231,32 +229,24 @@
   .mic-area {
     display: flex; flex-direction: column;
     align-items: center; gap: 6px;
-    padding: 10px 22px 12px;
+    padding: 6px 22px 2px;
     flex-shrink: 0;
   }
   .mic-btn {
-    width: 82px; height: 82px; border-radius: 50%;
-    border: 4px solid rgba(37,99,235,0.22);
-    background: rgba(255,255,255,0.94);
+    width: 64px; height: 64px; border-radius: 50%;
+    border: 3px solid rgba(0,0,0,0.1);
+    background: rgba(255,255,255,0.85);
     cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     transition: all 0.2s ease;
     -webkit-tap-highlight-color: transparent;
-    box-shadow: 0 7px 0 rgba(37,99,235,0.18), 0 10px 28px rgba(15,23,42,0.18);
   }
-  .mic-btn:hover { transform: translateY(-2px); }
   .mic-btn:active { transform: scale(0.92); }
-  .mic-btn svg { width: 38px; height: 38px; fill: #2563eb; transition: fill 0.2s; }
+  .mic-btn svg { width: 28px; height: 28px; fill: #475569; transition: fill 0.2s; }
   .mic-btn.listening {
     background: #dbeafe; border-color: #3b82f6;
-    transform: scale(var(--voice-scale, 1));
-    box-shadow:
-      0 0 0 var(--voice-ring, 7px) rgba(59,130,246,0.22),
-      0 8px 24px rgba(37,99,235,0.22);
-    transition: transform 70ms linear, box-shadow 70ms linear, background 120ms ease;
+    animation: mic-pulse 1.2s ease infinite;
   }
-  .mic-btn.listening.hearing { background: #bfdbfe; }
-  .mic-btn.listening.hearing svg { transform: scale(1.08); }
   .mic-btn.listening svg { fill: #1d4ed8; }
   .mic-btn.processing {
     background: #fef3c7; border-color: #f59e0b;
@@ -269,8 +259,8 @@
   }
   .mic-label {
     font-family: 'Fredoka', sans-serif;
-    font-size: 12px; font-weight: 600;
-    color: rgba(0,0,0,0.62);
+    font-size: 11px; font-weight: 500;
+    color: rgba(0,0,0,0.45);
     letter-spacing: 0.1em; text-transform: uppercase;
     min-height: 16px;
   }
@@ -335,7 +325,7 @@
 
   /* Controls (mock mode) */
   .controls {
-    display: none;
+    display: flex;
     gap: 10px;
     padding: 8px 22px 24px;
     flex-shrink: 0;
@@ -366,7 +356,6 @@
     padding: 10px 0;
   }
   .mock-label {
-    display: none;
     text-align: center;
     font-family: 'Fredoka', sans-serif;
     font-size: 9px; font-weight: 500;
@@ -374,49 +363,7 @@
     letter-spacing: 0.15em; text-transform: uppercase;
     padding: 0 22px 2px;
   }
-  body.debug-mode .controls { display: flex; }
-  body.debug-mode .mock-label { display: block; }
 
-  /* Connection overlay */
-  .conn-overlay {
-    position: absolute; inset: 0;
-    background: rgba(255,255,255,0.95);
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 16px;
-    z-index: 50;
-    transition: opacity 0.4s ease;
-  }
-  .conn-overlay.hidden { opacity: 0; pointer-events: none; }
-  .conn-title {
-    font-family: 'Fredoka', sans-serif;
-    font-weight: 700; font-size: 24px;
-    color: #1a1a1a;
-  }
-  .conn-sub {
-    font-family: 'Fredoka', sans-serif;
-    font-size: 14px; color: rgba(0,0,0,0.5);
-    text-align: center; max-width: 260px;
-    line-height: 1.5;
-  }
-  .conn-btn {
-    font-family: 'Fredoka', sans-serif;
-    font-weight: 600; font-size: 18px;
-    padding: 14px 40px; border-radius: 999px;
-    border: none; cursor: pointer;
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
-    color: #fff;
-    box-shadow: 0 6px 0 rgba(37,99,235,0.3);
-    transition: transform 0.1s ease;
-  }
-  .conn-btn:active { transform: scale(0.95); }
-  .conn-spinner {
-    width: 32px; height: 32px;
-    border: 3px solid rgba(0,0,0,0.1);
-    border-top-color: #3b82f6;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   /* Error banner */
@@ -495,7 +442,7 @@
   </div>
 
   <div class="mic-area" id="mic-area">
-    <button class="mic-btn" id="mic-btn" type="button" aria-label="Start recording">
+    <button class="mic-btn" id="mic-btn">
       <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
     </button>
     <div class="mic-label" id="mic-label">Tap to speak</div>
@@ -518,13 +465,6 @@
     <button class="btn btn-right" id="btn-right">&#x2713; Right</button>
   </div>
 
-  <!-- Connection overlay -->
-  <div class="conn-overlay" id="conn-overlay">
-    <div class="conn-title" id="conn-title">Pronunciation Practice</div>
-    <div class="conn-sub" id="conn-sub">Connect to the pronunciation engine to begin your session.</div>
-    <button class="conn-btn" id="conn-btn">Start Session</button>
-    <div class="conn-spinner" id="conn-spinner" style="display:none"></div>
-  </div>
 
   <!-- Reconnect banner -->
   <div class="reconnect-banner" id="reconnect-banner">
@@ -542,25 +482,34 @@
 // ============================================================
 //  Configuration & exercise definition
 // ============================================================
-// Production/default: real microphone. Add ?debug=1 for mock controls.
-const URL_CONFIG = new URLSearchParams(window.location.search);
-const WS_SCHEME = window.location.protocol === 'https:' ? 'wss' : 'ws';
-const API_AUTHORITY = URL_CONFIG.get('api') || `${window.location.hostname}:8000`;
 const CONFIG = {
-  wsUrl: `${WS_SCHEME}://${API_AUTHORITY}/sessions`,
-  streamWsUrl: `${WS_SCHEME}://${API_AUTHORITY}/streaming/sessions`,
-  useMock: URL_CONFIG.get('debug') === '1',
+  wsUrl: 'ws://127.0.0.1:8000/sessions',
+  useMock: true,
   confidenceThreshold: 0.6,
   maxProgressUpdatesPerSec: 10,
 };
-document.body.classList.toggle('debug-mode', CONFIG.useMock);
 
 const EXERCISES = [
-  { target:'BIRD',    sentence:'A happy bird can fly',    language:'en-US', task:'sentence_pronunciation', scene:'meadow' },
-  { target:'FOLLOW',  sentence:'Follow the little bird',  language:'en-US', task:'sentence_pronunciation', scene:'hills' },
-  { target:'FORWARD', sentence:'Take one step forward',   language:'en-US', task:'sentence_pronunciation', scene:'meadow' },
-  { target:'HAPPY',   sentence:'The happy bird can sing', language:'en-US', task:'sentence_pronunciation', scene:'hills' },
-  { target:'LEARN',   sentence:'We learn a new word',     language:'en-US', task:'sentence_pronunciation', scene:'underwater' },
+  { target:'STAR',   sentence:'Twinkle, twinkle, little star',     language:'en-US', task:'letter_name_spelling', scene:'meadow' },
+  { target:'CAT',    sentence:'The cat sat on the mat',            language:'en-US', task:'letter_name_spelling', scene:'hills' },
+  { target:'SUN',    sentence:'The sun is warm and bright',        language:'en-US', task:'letter_name_spelling', scene:'meadow' },
+  { target:'APPLE',  sentence:'A red apple in the tree',           language:'en-US', task:'letter_name_spelling', scene:'hills' },
+  { target:'MOON',   sentence:'The moon is up in the sky',         language:'en-US', task:'letter_name_spelling', scene:'meadow' },
+  { target:'DOG',    sentence:'My dog loves to play with me',      language:'en-US', task:'letter_name_spelling', scene:'hills' },
+  { target:'TREE',   sentence:'The tree is very tall',             language:'en-US', task:'letter_name_spelling', scene:'hills' },
+  { target:'FISH',   sentence:'The fish swims in the sea',         language:'en-US', task:'letter_name_spelling', scene:'underwater' },
+  { target:'BIRD',   sentence:'A little bird can fly high',        language:'en-US', task:'letter_name_spelling', scene:'meadow' },
+  { target:'BOOK',   sentence:'I love to read a book',             language:'en-US', task:'letter_name_spelling', scene:'hills' },
+  { target:'MILK',   sentence:'I drink my milk every day',         language:'en-US', task:'letter_name_spelling', scene:'hills' },
+  { target:'FROG',   sentence:'The frog hops on the log',          language:'en-US', task:'letter_name_spelling', scene:'underwater' },
+  { target:'KITE',   sentence:'My kite is flying high',            language:'en-US', task:'letter_name_spelling', scene:'meadow' },
+  { target:'BEAR',   sentence:'The bear lives in the woods',       language:'en-US', task:'letter_name_spelling', scene:'hills' },
+  { target:'LION',   sentence:'The lion has a big mane',           language:'en-US', task:'letter_name_spelling', scene:'hills' },
+  { target:'DUCK',   sentence:'The duck goes quack, quack, quack', language:'en-US', task:'letter_name_spelling', scene:'underwater' },
+  { target:'FLOWER', sentence:'The flower smells so sweet',        language:'en-US', task:'letter_name_spelling', scene:'hills' },
+  { target:'RAIN',   sentence:'The rain falls on the roof',        language:'en-US', task:'letter_name_spelling', scene:'meadow' },
+  { target:'FIRE',   sentence:'The fire is warm and cozy',         language:'en-US', task:'letter_name_spelling', scene:'meadow' },
+  { target:'SNAKE',  sentence:'The snake slides in the grass',     language:'en-US', task:'letter_name_spelling', scene:'hills' },
 ];
 
 const SCENE_IMAGES = {
@@ -704,15 +653,6 @@ const state = {
   uiState: 'idle',
   sessionId: null,
   ws: null,
-  streamWs: null,
-  mediaStream: null,
-  audioContext: null,
-  audioSource: null,
-  audioProcessor: null,
-  pcmBuffer: [],
-  voiceLevel: 0,
-  speechDetected: false,
-  silentFrameCount: 0,
   reconnectAttempts: 0,
   maxReconnectAttempts: 5,
   reconnectTimer: null,
@@ -720,8 +660,6 @@ const state = {
   lastAttemptId: null,
   seenAttemptIds: new Set(),
   lastProgressTime: 0,
-  wordUpdateQueue: [],
-  wordUpdateTimer: null,
 };
 
 // ============================================================
@@ -745,11 +683,6 @@ const btnRetry = document.getElementById('btn-retry');
 const sceneA = document.getElementById('scene-a');
 const sceneB = document.getElementById('scene-b');
 const connDot = document.getElementById('conn-dot');
-const connOverlay = document.getElementById('conn-overlay');
-const connBtn = document.getElementById('conn-btn');
-const connSpinner = document.getElementById('conn-spinner');
-const connTitle = document.getElementById('conn-title');
-const connSub = document.getElementById('conn-sub');
 const micBtn = document.getElementById('mic-btn');
 const micLabel = document.getElementById('mic-label');
 const resultCard = document.getElementById('result-card');
@@ -777,39 +710,14 @@ function setUIState(newState) {
   else if (newState === 'connecting') connDot.classList.add('connecting');
   else if (newState === 'error') connDot.classList.add('error');
 
-  // Connection overlay
-  connOverlay.classList.toggle('hidden', newState !== 'idle' && newState !== 'connecting');
-  connBtn.style.display = newState === 'idle' ? '' : 'none';
-  connSpinner.style.display = newState === 'connecting' ? '' : 'none';
-  if (newState === 'connecting') {
-    connTitle.textContent = 'Connecting…';
-    connSub.textContent = 'Establishing session with the pronunciation engine.';
-  }
-
   // Mic button states
   micBtn.className = 'mic-btn';
-  micBtn.disabled = !['ready','listening','evaluated','low_confidence'].includes(newState);
-  if (newState === 'listening') {
-    micBtn.classList.add('listening');
-    micBtn.setAttribute('aria-label', 'Stop recording');
-    micLabel.textContent = 'Tap to finish';
-  } else if (newState === 'processing') {
-    micBtn.classList.add('processing');
-    micBtn.setAttribute('aria-label', 'Evaluating pronunciation');
-    micLabel.textContent = 'Evaluating…';
-  } else if (newState === 'ready') {
-    micBtn.setAttribute('aria-label', 'Start recording');
-    micLabel.textContent = 'Tap to speak';
-  } else if (newState === 'evaluated') {
-    micBtn.setAttribute('aria-label', 'Record another attempt');
-    micLabel.textContent = 'Tap to continue';
-  } else if (newState === 'low_confidence') {
-    micBtn.setAttribute('aria-label', 'Try recording again');
-    micLabel.textContent = 'Try again';
-  } else {
-    micBtn.setAttribute('aria-label', 'Start recording');
-    micLabel.textContent = '';
-  }
+  if (newState === 'listening') { micBtn.classList.add('listening'); micLabel.textContent = 'Listening…'; }
+  else if (newState === 'processing') { micBtn.classList.add('processing'); micLabel.textContent = 'Evaluating…'; }
+  else if (newState === 'ready') { micLabel.textContent = 'Tap to speak'; }
+  else if (newState === 'evaluated') { micLabel.textContent = 'Tap to continue'; }
+  else if (newState === 'low_confidence') { micLabel.textContent = 'Try again'; }
+  else { micLabel.textContent = ''; }
 
   // Banners
   errorBanner.classList.toggle('visible', newState === 'error');
@@ -846,19 +754,6 @@ function setExercise(idx) {
   state.currentPattern = patternForWord(ex.target);
   state.wordNodes = renderSentenceInto(wordEl, ex.sentence);
   state.readIdx = -1;
-  state.targetLayers = 1;
-  state.animProgress = 1;
-  state.pulse = 0;
-  state.wrong = 0;
-  state.wordUpdateQueue = [];
-  if (state.wordUpdateTimer !== null) {
-    clearTimeout(state.wordUpdateTimer);
-    state.wordUpdateTimer = null;
-  }
-  for (const node of state.wordNodes) {
-    delete node.dataset.evaluated;
-    node.classList.remove('current', 'read', 'failed', 'low-conf');
-  }
   levelChip.textContent = 'Level ' + (state.exerciseIdx + 1);
   tagLang.textContent = ex.language;
   tagTask.textContent = ex.task;
@@ -888,7 +783,7 @@ function connectWebSocket() {
   }
 
   setUIState('connecting');
-  if (!state.sessionId) state.sessionId = generateSessionId();
+  state.sessionId = generateSessionId();
 
   try {
     state.ws = new WebSocket(`${CONFIG.wsUrl}/${state.sessionId}/events`);
@@ -940,166 +835,6 @@ function scheduleReconnect() {
 function disconnectWebSocket() {
   if (state.reconnectTimer) clearTimeout(state.reconnectTimer);
   if (state.ws) { state.ws.onclose = null; state.ws.close(); state.ws = null; }
-  stopAudioCapture(false);
-  state.sessionId = null;
-}
-
-function floatToPcm16(samples) {
-  const pcm = new Int16Array(samples.length);
-  for (let i = 0; i < samples.length; i++) {
-    const value = Math.max(-1, Math.min(1, samples[i]));
-    pcm[i] = value < 0 ? Math.round(value * 32768) : Math.round(value * 32767);
-  }
-  return pcm;
-}
-
-function resampleTo16k(input, inputRate) {
-  if (inputRate === 16000) return Array.from(input);
-  const outputLength = Math.floor(input.length * 16000 / inputRate);
-  const output = new Array(outputLength);
-  const ratio = inputRate / 16000;
-  for (let index = 0; index < outputLength; index++) {
-    const position = index * ratio;
-    const left = Math.floor(position);
-    const right = Math.min(left + 1, input.length - 1);
-    const fraction = position - left;
-    output[index] = input[left] * (1 - fraction) + input[right] * fraction;
-  }
-  return output;
-}
-
-async function beginAudioCapture() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    throw new Error('Microphone capture is unavailable in this browser.');
-  }
-  state.mediaStream = await navigator.mediaDevices.getUserMedia({
-    audio: {
-      channelCount: 1,
-      echoCancellation: false,
-      noiseSuppression: false,
-      autoGainControl: false,
-    },
-  });
-  state.audioContext = new AudioContext({ sampleRate: 16000 });
-  state.audioSource = state.audioContext.createMediaStreamSource(state.mediaStream);
-  state.audioProcessor = state.audioContext.createScriptProcessor(4096, 1, 1);
-  state.pcmBuffer = [];
-  state.audioProcessor.onaudioprocess = (event) => {
-    if (!state.streamWs || state.streamWs.readyState !== WebSocket.OPEN) return;
-    const mono = event.inputBuffer.getChannelData(0);
-    let energy = 0;
-    for (let index = 0; index < mono.length; index++) energy += mono[index] * mono[index];
-    const rms = Math.sqrt(energy / Math.max(mono.length, 1));
-    state.voiceLevel = state.voiceLevel * 0.55 + Math.min(rms / 0.12, 1) * 0.45;
-    const voiceVisible = state.voiceLevel > 0.08;
-    micBtn.classList.toggle('hearing', voiceVisible);
-    micBtn.style.setProperty('--voice-scale', (1 + state.voiceLevel * 0.18).toFixed(3));
-    micBtn.style.setProperty('--voice-ring', `${Math.round(7 + state.voiceLevel * 20)}px`);
-    micLabel.textContent = voiceVisible ? 'Voice detected' : 'Listening…';
-    state.pcmBuffer.push(...resampleTo16k(mono, state.audioContext.sampleRate));
-    while (state.pcmBuffer.length >= 640) {
-      const frame = state.pcmBuffer.splice(0, 640);
-      state.streamWs.send(floatToPcm16(frame).buffer);
-    }
-  };
-  state.audioSource.connect(state.audioProcessor);
-  state.audioProcessor.connect(state.audioContext.destination);
-}
-
-function releaseAudioResources() {
-  if (state.audioProcessor) {
-    state.audioProcessor.disconnect();
-    state.audioProcessor.onaudioprocess = null;
-  }
-  if (state.audioSource) state.audioSource.disconnect();
-  if (state.mediaStream) {
-    for (const track of state.mediaStream.getTracks()) track.stop();
-  }
-  if (state.audioContext) state.audioContext.close();
-  state.audioProcessor = null;
-  state.audioSource = null;
-  state.mediaStream = null;
-  state.audioContext = null;
-  state.pcmBuffer = [];
-  state.voiceLevel = 0;
-  micBtn.classList.remove('hearing');
-  micBtn.style.removeProperty('--voice-scale');
-  micBtn.style.removeProperty('--voice-ring');
-}
-
-function stopAudioCapture(sendFinish = true) {
-  releaseAudioResources();
-  if (state.streamWs && state.streamWs.readyState === WebSocket.OPEN && sendFinish) {
-    state.streamWs.send(JSON.stringify({ type: 'session.finish' }));
-  } else if (state.streamWs && !sendFinish) {
-    state.streamWs.onclose = null;
-    state.streamWs.close();
-    state.streamWs = null;
-  }
-}
-
-async function startRealAttempt() {
-  const exercise = EXERCISES[state.exerciseIdx];
-  state.streamWs = new WebSocket(`${CONFIG.streamWsUrl}/${state.sessionId}`);
-  state.streamWs.binaryType = 'arraybuffer';
-  state.streamWs.onmessage = (event) => {
-    let data;
-    try { data = JSON.parse(event.data); } catch (_) { return; }
-    if (data.type === 'session.prompt') {
-      beginAudioCapture().catch((error) => {
-        releaseAudioResources();
-        setUIState('error');
-        errorText.textContent = error.message || 'Microphone permission denied.';
-      });
-    } else if (data.type === 'stream.inference.partial') {
-      if (data.voice_activity) {
-        state.speechDetected = true;
-        state.silentFrameCount = 0;
-      } else if (state.speechDetected) {
-        state.silentFrameCount++;
-      }
-      handleServerEvent({
-        type: 'pronunciation.progress',
-        version: 1,
-        sequence: data.sequence,
-        voice_activity: data.voice_activity,
-      });
-      if (Array.isArray(data.word_updates)) {
-        for (const update of data.word_updates) enqueueWordResult(update);
-      }
-      if (
-        state.uiState === 'listening'
-        && state.speechDetected
-        && state.silentFrameCount >= 40
-      ) {
-        setUIState('processing');
-        stopAudioCapture(true);
-      }
-    } else if (data.type === 'pronunciation.evaluated') {
-      handleServerEvent(data);
-    } else if (data.type === 'stream.error') {
-      setUIState('error');
-      errorText.textContent = data.message || 'Audio stream error.';
-    }
-  };
-  state.streamWs.onopen = () => {
-    state.speechDetected = false;
-    state.silentFrameCount = 0;
-    state.streamWs.send(JSON.stringify({
-      type: 'session.start',
-      target_words: [exercise.target.toLowerCase()],
-      expected_text: exercise.sentence,
-      locale: exercise.language,
-    }));
-  };
-  state.streamWs.onclose = () => {
-    state.streamWs = null;
-    releaseAudioResources();
-  };
-  state.streamWs.onerror = () => {
-    setUIState('error');
-    errorText.textContent = 'Audio stream connection error.';
-  };
 }
 
 // ============================================================
@@ -1121,13 +856,7 @@ function handleServerEvent(data) {
     state.seenAttemptIds.add(data.attempt_id);
     state.lastAttemptId = data.attempt_id;
 
-    if (['RETRY','UNDECIDABLE','REVIEW_REQUIRED'].includes(data.status)) {
-      handleLowConfidence(data);
-    } else if (data.status === 'CORRECT') {
-      handleCorrect(data);
-    } else if (data.status === 'INCORRECT') {
-      handleIncorrect(data);
-    } else if (data.confidence !== null && data.confidence < CONFIG.confidenceThreshold) {
+    if (data.confidence !== null && data.confidence < CONFIG.confidenceThreshold) {
       handleLowConfidence(data);
     } else if (data.score !== null && data.score >= 0.7) {
       handleCorrect(data);
@@ -1145,99 +874,18 @@ function handleServerEvent(data) {
 // ============================================================
 function handleCorrect(data) {
   setUIState('evaluated');
-  if (Array.isArray(data.words) && data.words.length) {
-    playSentenceWordResults(data.words, true);
-    showResult('correct', data);
-    return;
-  }
-  if (data.result && data.result.mode === 'sentence_pronunciation') {
-    state.readIdx = state.wordNodes.length - 1;
-    state.targetLayers = currentCfg().layerCount;
-    for (const node of state.wordNodes) {
-      node.classList.add('read');
-      node.classList.remove('current', 'failed', 'low-conf');
-    }
-    state.pulse = 1;
-    startLevelUp();
-  } else {
-    onRight();
-  }
+  onRight();
   showResult('correct', data);
 }
 
 function handleIncorrect(data) {
   setUIState('evaluated');
-  if (Array.isArray(data.words) && data.words.length) {
-    playSentenceWordResults(data.words, false);
-    showResult('incorrect', data);
-    return;
-  }
   onWrong();
   showResult('incorrect', data);
 }
 
-function playSentenceWordResults(results, sentenceCorrect) {
-  results.forEach((result, step) => {
-    setTimeout(() => {
-      applyWordResult(result);
-      if (step === results.length - 1) {
-        const index = Number.isInteger(result.index) ? result.index : step;
-        const node = state.wordNodes[index];
-        if (!node) return;
-        node.classList.remove('current');
-        if (sentenceCorrect) {
-          state.targetLayers = currentCfg().layerCount;
-          startLevelUp();
-        }
-      }
-    }, step * 320);
-  });
-}
-
-function applyWordResult(result) {
-  const index = Number.isInteger(result.index) ? result.index : -1;
-  const node = state.wordNodes[index];
-  if (!node || node.dataset.evaluated === result.status) return;
-  node.dataset.evaluated = result.status;
-  state.readIdx = index;
-  for (const item of state.wordNodes) item.classList.remove('current');
-  node.classList.add('current');
-  const perWord = currentCfg().layerCount / Math.max(state.wordNodes.length, 1);
-  if (result.status === 'CORRECT') {
-    node.classList.add('read');
-    node.classList.remove('failed', 'low-conf');
-    state.targetLayers = Math.min(currentCfg().layerCount, state.targetLayers + perWord);
-    state.pulse = 1;
-  } else if (result.status === 'INCORRECT') {
-    node.classList.remove('read');
-    node.classList.add('failed');
-    state.targetLayers = Math.max(1, state.targetLayers - perWord);
-    state.wrong = 1;
-  } else {
-    node.classList.add('low-conf');
-  }
-}
-
-function enqueueWordResult(result) {
-  state.wordUpdateQueue.push(result);
-  if (state.wordUpdateTimer !== null) return;
-  const advance = () => {
-    const next = state.wordUpdateQueue.shift();
-    if (!next) {
-      state.wordUpdateTimer = null;
-      return;
-    }
-    applyWordResult(next);
-    state.wordUpdateTimer = setTimeout(advance, 360);
-  };
-  advance();
-}
-
 function handleLowConfidence(data) {
   setUIState('low_confidence');
-  if (Array.isArray(data.words) && data.words.length) {
-    playSentenceWordResults(data.words, false);
-  }
   const n = state.wordNodes.length;
   if (state.readIdx >= 0 && state.readIdx < n) {
     const el = state.wordNodes[state.readIdx];
@@ -1255,27 +903,13 @@ function showResult(type, data) {
   resultCard.classList.add('visible');
   resultVerdict.className = 'result-verdict ' + type;
 
-  const reasons = Array.isArray(data.reason_codes) ? data.reason_codes : [];
-  if (type === 'correct') {
-    resultVerdict.textContent = 'Correct!';
-  } else if (type === 'incorrect' && reasons.includes('WRONG_WORD')) {
-    resultVerdict.textContent = 'Different word heard. Try again.';
-  } else if (type === 'incorrect') {
-    resultVerdict.textContent = 'Try again';
-  } else if (reasons.includes('PHONETIC_BACKEND_DISABLED')) {
-    resultVerdict.textContent = 'Word recognized — pronunciation check unavailable.';
-  } else if (reasons.includes('PHONETIC_BACKEND_REQUIRED')) {
-    resultVerdict.textContent = 'Word heard — phonetic scoring unavailable.';
-  } else if (reasons.includes('AUDIO_INSUFFICIENT')) {
-    resultVerdict.textContent = 'No clear speech heard. Try again.';
-  } else {
-    resultVerdict.textContent = 'Not clear enough. Try again.';
-  }
+  if (type === 'correct') resultVerdict.textContent = 'Correct!';
+  else if (type === 'incorrect') resultVerdict.textContent = 'Try again';
+  else resultVerdict.textContent = 'Could not evaluate clearly. Try again.';
 
   const metaParts = [];
   if (data.score !== null && data.score !== undefined) metaParts.push('score: ' + (data.score * 100).toFixed(0) + '%');
   if (data.confidence !== null && data.confidence !== undefined) metaParts.push('conf: ' + (data.confidence * 100).toFixed(0) + '%');
-  if (data.recognized_word) metaParts.push('heard: ' + data.recognized_word);
   if (data.engine_version) metaParts.push(data.engine_version);
   resultMeta.textContent = metaParts.join(' · ');
 
@@ -1804,10 +1438,6 @@ const MOCK = {
 // ============================================================
 //  Event wiring
 // ============================================================
-connBtn.addEventListener('click', () => {
-  connectWebSocket();
-});
-
 btnRetry.addEventListener('click', () => {
   hideResult();
   disconnectWebSocket();
@@ -1815,35 +1445,12 @@ btnRetry.addEventListener('click', () => {
   connectWebSocket();
 });
 
-micBtn.addEventListener('click', async () => {
+micBtn.addEventListener('click', () => {
   if (state.uiState === 'ready' || state.uiState === 'evaluated' || state.uiState === 'low_confidence') {
     hideResult();
-    for (const node of state.wordNodes) {
-      delete node.dataset.evaluated;
-      node.classList.remove('current', 'read', 'failed', 'low-conf');
-    }
-    state.wordUpdateQueue = [];
-    if (state.wordUpdateTimer !== null) {
-      clearTimeout(state.wordUpdateTimer);
-      state.wordUpdateTimer = null;
-    }
-    state.readIdx = -1;
-    state.targetLayers = 1;
-    state.animProgress = 1;
-    state.pulse = 0;
-    state.wrong = 0;
     setUIState('listening');
-    if (!CONFIG.useMock) {
-      try {
-        await startRealAttempt();
-      } catch (error) {
-        setUIState('error');
-        errorText.textContent = error.message || 'Unable to start microphone.';
-      }
-    }
   } else if (state.uiState === 'listening') {
     setUIState('processing');
-    if (!CONFIG.useMock) stopAudioCapture(true);
   }
 });
 
