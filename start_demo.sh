@@ -4,8 +4,14 @@ set -Eeuo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 FIRST_RUN_MARKER="$ROOT_DIR/.venv/.demo-initialized"
+DOCKER_DESKTOP_BIN="/Applications/Docker.app/Contents/Resources/bin"
 
 cd "$ROOT_DIR"
+
+# Docker Desktop può installare gli helper senza aggiungerli al PATH.
+if [[ -d "$DOCKER_DESKTOP_BIN" && ":$PATH:" != *":$DOCKER_DESKTOP_BIN:"* ]]; then
+  export PATH="$DOCKER_DESKTOP_BIN:$PATH"
+fi
 
 log() {
   printf '\n\033[1;36m%s\033[0m\n' "$1"
