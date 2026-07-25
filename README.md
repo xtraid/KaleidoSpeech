@@ -156,7 +156,8 @@ than clinical or educational diagnoses.
 
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - Docker
-- PortAudio on Linux
+- eSpeak NG for phonetic scoring
+- PortAudio only for the optional command-line microphone tools
 
 Python does not need to be installed manually: `uv sync` downloads the required
 Python version, creates `.venv`, and installs the dependencies declared in
@@ -165,7 +166,7 @@ Python version, creates `.venv`, and installs the dependencies declared in
 ### CachyOS / Arch Linux
 
 ```bash
-sudo pacman -S uv portaudio docker
+sudo pacman -S uv espeak-ng portaudio docker
 sudo systemctl enable --now docker
 ```
 
@@ -175,17 +176,18 @@ Install [Docker Desktop](https://docs.docker.com/desktop/setup/install/mac-insta
 and uv:
 
 ```bash
-brew install uv
+brew install uv espeak-ng
 ```
 
-The `sounddevice` package installed by `uv sync` includes PortAudio on macOS.
+The browser demo does not require `sounddevice`. Install the optional
+`microphone` extra only for the command-line microphone tools.
 
 ## Setup
 
 From the repository root:
 
 ```bash
-uv sync
+uv sync --extra phonetic
 cp .env.example .env
 uv run python -m scripts.init_db
 ```
@@ -253,15 +255,12 @@ Available endpoints:
 Capture and publish microphone frames:
 
 ```bash
+uv sync --extra phonetic --extra microphone
 uv run python -m app.audio_producer
 ```
 
 The producer generates a server-side UUID and prints it to the terminal. Press
 Enter to stop capturing. Frames are published to `audio:{session_id}`.
-
-Running these two processes does not yet produce a pronunciation score: the
-voice-activity/word segmentation and pronunciation-engine integration are still
-pending.
 
 ## Build and try the English acoustic baseline
 

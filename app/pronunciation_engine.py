@@ -137,12 +137,3 @@ class PronunciationResult:
     engine_version: str
 
 
-class PronunciationEngine(Protocol):
-    def evaluate(
-        self,
-        pcm_s16le: bytes,
-        sample_rate: int,
-        expected_phonemes: list[str],
-        accepted_variants: list[list[str]],
-    ) -> PronunciationResult:
-        ...

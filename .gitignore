@@ -6,5 +6,7 @@ __pycache__/
 tmp/
 tmp.txt
 data/model-cache/
+data/*.sqlite3-shm
+data/*.sqlite3-wal
 .pytest_cache/
 .env

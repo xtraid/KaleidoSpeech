@@ -3,34 +3,13 @@
 import argparse
 import json
 import logging
-import socket
-from collections.abc import Callable
-from dataclasses import asdict
 from pathlib import Path
-from typing import Any
 
 import soundfile as sf
-from redis.exceptions import ResponseError
 
 from app.acoustic_benchmark import evaluate_word_pcm
-from app.temporal_benchmark import evaluate_temporal_word_pcm
-from app.benchmark_repository import (
-    Benchmark,
-    find_benchmark,
-    save_attempt,
-)
-from app.pronunciation_engine import PronunciationResult
-from app.redis_bus import (
-    client,
-    get_json,
-    publish_ui_event,
-    set_json,
-    update_session_state,
-)
 from app.config import get_settings
-
-
-FrameProcessor = Callable[[str, int, bytes], None]
+from app.temporal_benchmark import evaluate_temporal_word_pcm
 
 
 def parse_audio_frame(fields: dict[bytes, bytes]) -> tuple[int, bytes]:
@@ -72,106 +51,6 @@ def assemble_word_window(records: list[dict[bytes, bytes]]) -> bytes:
     if sequences != expected:
         raise ValueError("Redis audio frame sequence is not contiguous")
     return b"".join(pcm for _, pcm in decoded)
-
-
-def get_benchmark(language: str, word: str) -> Benchmark | None:
-    """Load a benchmark using Redis as a disposable cache."""
-    normalized_word = word.casefold()
-    key = f"benchmark:{language.casefold()}:{normalized_word}"
-    cached = get_json(key, redis_client=client)
-    if cached is not None:
-        return Benchmark(**cached)
-
-    benchmark = find_benchmark(language, normalized_word)
-    if benchmark is None:
-        return None
-
-    set_json(
-        key,
-        asdict(benchmark),
-        ttl_seconds=3_600,
-        redis_client=client,
-    )
-    return benchmark
-
-
-def ensure_group(stream: str, group: str) -> None:
-    try:
-        client.xgroup_create(stream, group, id="0", mkstream=True)
-    except ResponseError as error:
-        if "BUSYGROUP" not in str(error):
-            raise
-
-
-def consume_frames(
-    session_id: str,
-    process_frame: FrameProcessor,
-    *,
-    stop_after_idle: bool = False,
-) -> None:
-    """Consume and acknowledge frames only after processing succeeds."""
-    stream = f"audio:{session_id}"
-    group = "pronunciation-workers"
-    consumer = f"{socket.gethostname()}-{session_id[:8]}"
-    ensure_group(stream, group)
-
-    claimed = client.xautoclaim(
-        stream,
-        group,
-        consumer,
-        min_idle_time=30_000,
-        start_id="0-0",
-        count=25,
-    )
-    pending_messages = claimed[1] if len(claimed) > 1 else []
-    for message_id, fields in pending_messages:
-        sequence, pcm = parse_audio_frame(fields)
-        process_frame(session_id, sequence, pcm)
-        client.xack(stream, group, message_id)
-
-    while True:
-        batches = client.xreadgroup(
-            groupname=group,
-            consumername=consumer,
-            streams={stream: ">"},
-            count=25,
-            block=1_000,
-        )
-        if not batches:
-            if stop_after_idle:
-                return
-            continue
-
-        for _, messages in batches:
-            for message_id, fields in messages:
-                sequence, pcm = parse_audio_frame(fields)
-                process_frame(session_id, sequence, pcm)
-                client.xack(stream, group, message_id)
-
-
-def persist_final_result(
-    session_id: str,
-    benchmark: Benchmark,
-    result: PronunciationResult,
-) -> int:
-    """Persist one final result and publish its versioned UI event."""
-    attempt = save_attempt(session_id, benchmark.id, result)
-    event: dict[str, Any] = {
-        "type": "pronunciation.evaluated",
-        "version": 1,
-        "attempt_id": attempt.id,
-        "phase": "evaluated",
-        "expected_word": benchmark.word,
-        "expected_phonemes": benchmark.expected_phonemes,
-        "detected_phonemes": result.detected_phonemes,
-        "confidence": result.overall_confidence,
-        "score": result.score,
-        "benchmark_version": benchmark.version,
-        "engine_version": result.engine_version,
-    }
-    update_session_state(session_id, event)
-    publish_ui_event(session_id, event)
-    return attempt.id
 
 
 def _main() -> None:

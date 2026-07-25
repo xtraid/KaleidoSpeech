@@ -131,8 +131,7 @@ class DtwWordIdentityGate:
         if target not in distances or len(distances) < 2:
             return WordIdentityEvidence(target, None, 0.0, 0.0, "UNCERTAIN", self.version)
         ordered = sorted(distances.items(), key=lambda item: item[1])
-        recognized_word, recognized_distance = ordered[0]
-        target_distance = distances[target]
+        recognized_word, _ = ordered[0]
         # A normalized closed-set distribution makes confidence observable.
         logits = -np.asarray([distance for _, distance in ordered], dtype=np.float64)
         probabilities = np.exp(logits - np.max(logits))
@@ -141,7 +140,7 @@ class DtwWordIdentityGate:
             word: float(probability)
             for (word, _), probability in zip(ordered, probabilities)
         }
-        margin = sorted(distances.values())[1] - sorted(distances.values())[0]
+        margin = ordered[1][1] - ordered[0][1]
         if margin < self.mismatch_margin_threshold:
             status = "UNCERTAIN"
         else:
