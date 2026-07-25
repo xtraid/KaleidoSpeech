@@ -9,16 +9,19 @@ dependencies = [
     "pydantic>=2.8,<3",
     "redis>=5,<7",
     "scipy>=1.14,<2",
-    "sounddevice>=0.5,<1",
     "soundfile>=0.13,<1",
     "uvicorn[standard]>=0.30,<1",
 ]
 
 [project.optional-dependencies]
 phonetic = [
+    "huggingface-hub>=1,<2",
     "phonemizer>=3,<4",
     "torch>=2.4,<3",
     "transformers>=4.45,<6",
+]
+microphone = [
+    "sounddevice>=0.5,<1",
 ]
 ml = [
     "joblib>=1.4,<2",

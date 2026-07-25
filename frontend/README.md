@@ -1,7 +1,7 @@
-# Pronunciation UI — Frontend Prototype (V5)
+# Pronunciation UI
 
-Self-contained single-file prototype that implements the UI contract from `ui_handoff.md`.
-No build step, no dependencies, no framework — open `index.html` in a browser or serve it with any static file server.
+Self-contained single-file prototype with no build step, dependencies, or
+framework. Open `index.html` in a browser or serve it with any static server.
 
 ## Quick start
 
@@ -14,13 +14,8 @@ python3 -m http.server 8765
 ## What's in this folder
 
 ```
-send/
-  index.html              Single-file app (HTML + CSS + JS)
-  backgrounds/
-    meadow.png            Scene background (512 x 1024)
-    hills.png             Scene background (512 x 1024)
-    underwater.png         Scene background (512 x 1024)
-  README.md               This file
+index.html    Single-file app (HTML + CSS + JS, including scene images)
+README.md     This file
 ```
 
 ## How it works
@@ -126,7 +121,7 @@ The component does not assume units are Latin letters — it renders whatever st
 
 ## Exercise configuration
 
-Each exercise carries separate fields as specified in the handoff:
+Each exercise carries separate target, sentence, locale, task, and scene fields:
 
 ```js
 {
@@ -140,7 +135,8 @@ Each exercise carries separate fields as specified in the handoff:
 
 `language`, `task`, and `scene` are stored and displayed independently. No "English/Chinese" toggle that loses locale or task.
 
-The current prototype has 20 hardcoded English exercises. Once the session creation endpoint is ready, these should come from the backend.
+The current prototype has five hardcoded English exercises. Once the session
+creation endpoint is ready, these should come from the backend.
 
 ## Real microphone mode
 
@@ -167,7 +163,7 @@ testing. Production must use HTTPS/WSS.
 - Browser-specific microphone QA and AudioWorklet migration
 - Server-side VAD calibration
 - Authentication
-- Locale/task selection UI (currently hardcoded to `en-US` + `letter_name_spelling`)
+- Locale/task selection UI (currently hardcoded to `en-US` + `sentence_pronunciation`)
 - Persisting results (no `localStorage` usage, per privacy requirements)
 
 ## Privacy
@@ -178,11 +174,9 @@ testing. Production must use HTTPS/WSS.
 - Console logs contain no personal information
 - In production, switch to `wss://` and add authentication
 
-## Decisions to align on before real integration
+## Remaining product decisions
 
-See `ui_handoff.md` section "Decisioni da concordare con il backend" — all 10 items are still open.
-
-Key ones for the first integration pass:
+Key decisions for the next integration pass:
 
 1. Session creation endpoint and payload
 2. How to start/stop a pronunciation attempt (command from UI → backend)

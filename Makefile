@@ -2,7 +2,7 @@
 	evaluate-demo frontend frontend-bg dev dev-reload
 
 init:
-	uv sync
+	uv sync --extra phonetic
 	uv run python -m scripts.init_db
 
 test:
@@ -21,7 +21,7 @@ api:
 	uv run --env-file .env uvicorn app.api:app --host 127.0.0.1 --port 8000
 
 producer:
-	uv run python -m app.audio_producer
+	uv run --extra phonetic --extra microphone python -m app.audio_producer
 
 build-demo:
 	uv run python -m scripts.build_acoustic_benchmarks \
