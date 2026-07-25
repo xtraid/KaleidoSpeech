@@ -315,8 +315,8 @@ def clean_wav_files(
     denoise_applied = snr_db < 20.0
     if denoise_applied:
         samples = _spectral_denoise(samples, voice_start, voice_end)
-    # <8 dB il rumore è troppo alto - riprova
-        warnings.append("low_snr_retry_recommended")
+        if snr_db < 8.0:
+            warnings.append("low_snr_retry_recommended")
 
     # 7. rimozione pezzi senza voce, lasciando 120 ms di padding per testa e coda
     padding = round(PADDING_MS * TARGET_SAMPLE_RATE / 1000)

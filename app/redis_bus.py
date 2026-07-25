@@ -64,33 +64,6 @@ def probe_capabilities(
         )
 
 
-def get_json(key: str, *, redis_client: Redis | None = None) -> Any | None:
-    """Read a disposable JSON cache value."""
-    cache = redis_client or client
-    cached = cache.get(key)
-    if cached is None:
-        return None
-    if isinstance(cached, bytes):
-        cached = cached.decode("utf-8")
-    return json.loads(cached)
-
-
-def set_json(
-    key: str,
-    value: Any,
-    *,
-    ttl_seconds: int,
-    redis_client: Redis | None = None,
-) -> None:
-    """Write a JSON cache value with a mandatory finite lifetime."""
-    if ttl_seconds <= 0:
-        raise ValueError("ttl_seconds must be positive")
-    cache = redis_client or client
-    cache.setex(
-        key,
-        ttl_seconds,
-        json.dumps(value, ensure_ascii=False),
-    )
 
 
 def publish_audio_frame(
