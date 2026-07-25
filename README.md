@@ -13,6 +13,8 @@ a gamified approach:
 
 ## TRY IT NOW
 
+Download all pipeline with: "./start_demo.sh"
+
 Initialize the environment, database, and benchmarks:
 
 ```bash
