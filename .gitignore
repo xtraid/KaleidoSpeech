@@ -1,7 +1,9 @@
 materiale_precedente/
-docs/
 .venv/
 __pycache__/
 *.py[cod]
+tmp/
+tmp.txt
+data/model-cache/
 .pytest_cache/
 .env

@@ -180,18 +180,37 @@ def dtw_distance(
 
     rows, columns = len(first), len(second)
     band = max(abs(rows - columns), int(max(rows, columns) * band_ratio), 2)
-    costs = np.full((rows + 1, columns + 1), np.inf)
-    lengths = np.zeros((rows + 1, columns + 1), dtype=np.int32)
-    costs[0, 0] = 0.0
+    first_norms = np.linalg.norm(first, axis=1)
+    second_norms = np.linalg.norm(second, axis=1)
+    denominators = first_norms[:, None] * second_norms[None, :]
+    local_costs = np.empty((rows, columns), dtype=np.float64)
+    valid = denominators > _EPSILON
+    local_costs[valid] = 1.0 - np.clip(
+        (first @ second.T)[valid] / denominators[valid],
+        -1.0,
+        1.0,
+    )
+    if not np.all(valid):
+        zero_rows, zero_columns = np.nonzero(~valid)
+        differences = first[zero_rows] - second[zero_columns]
+        local_costs[zero_rows, zero_columns] = (
+            np.linalg.norm(differences, axis=1) / np.sqrt(FEATURE_DIMENSION)
+        )
+
+    previous_costs = np.full(columns + 1, np.inf)
+    previous_lengths = np.zeros(columns + 1, dtype=np.int32)
+    previous_costs[0] = 0.0
     for row in range(1, rows + 1):
+        current_costs = np.full(columns + 1, np.inf)
+        current_lengths = np.zeros(columns + 1, dtype=np.int32)
         center = round(row * columns / rows)
         start = max(1, center - band)
         stop = min(columns, center + band)
         for column in range(start, stop + 1):
             predecessors = (
-                (costs[row - 1, column], lengths[row - 1, column]),
-                (costs[row, column - 1], lengths[row, column - 1]),
-                (costs[row - 1, column - 1], lengths[row - 1, column - 1]),
+                (previous_costs[column], previous_lengths[column]),
+                (current_costs[column - 1], current_lengths[column - 1]),
+                (previous_costs[column - 1], previous_lengths[column - 1]),
             )
             previous_cost, previous_length = min(
                 predecessors,
@@ -199,12 +218,13 @@ def dtw_distance(
             )
             if not np.isfinite(previous_cost):
                 continue
-            costs[row, column] = previous_cost + _cosine_cost(
-                first[row - 1],
-                second[column - 1],
+            current_costs[column] = (
+                previous_cost + local_costs[row - 1, column - 1]
             )
-            lengths[row, column] = previous_length + 1
-    path_length = int(lengths[rows, columns])
-    if path_length == 0 or not np.isfinite(costs[rows, columns]):
+            current_lengths[column] = previous_length + 1
+        previous_costs, current_costs = current_costs, previous_costs
+        previous_lengths, current_lengths = current_lengths, previous_lengths
+    path_length = int(previous_lengths[columns])
+    if path_length == 0 or not np.isfinite(previous_costs[columns]):
         raise ValueError("No DTW path found inside the configured band")
-    return float(costs[rows, columns] / path_length)
+    return float(previous_costs[columns] / path_length)

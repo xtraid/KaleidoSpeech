@@ -12,5 +12,50 @@ services:
       timeout: 3s
       retries: 10
 
+  api:
+    profiles: ["production"]
+    build: .
+    environment:
+      APP_HOST: 0.0.0.0
+      REDIS_URL: redis://redis:6379/0
+      SQLITE_PATH: /app/data/pronunciation.sqlite3
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - sqlite-data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  api-dev:
+    profiles: ["development"]
+    build: .
+    command:
+      - uv
+      - run
+      - uvicorn
+      - app.api:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      SQLITE_PATH: /app/data/pronunciation.sqlite3
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - .:/app
+      - sqlite-data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+
 volumes:
   redis-data:
+  sqlite-data:

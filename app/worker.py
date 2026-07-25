@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import logging
 import socket
 from collections.abc import Callable
 from dataclasses import asdict
@@ -236,7 +237,9 @@ def _main() -> None:
             ],
             "attempt_id": summary.attempt_id,
         }
-    print(json.dumps(payload, indent=2, sort_keys=True))
+    logging.getLogger(__name__).info(
+        "worker_stopped payload=%s", json.dumps(payload, sort_keys=True)
+    )
 
 
 if __name__ == "__main__":

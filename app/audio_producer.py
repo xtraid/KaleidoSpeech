@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import queue
 import threading
 import time
@@ -89,7 +90,9 @@ class MicrophoneProducer:
                 blocksize=settings.samples_per_frame,
                 callback=self._callback,
             ):
-                print(f"Sessione: {self.session_id}. Invio per uscire.")
+                logging.getLogger(__name__).info(
+                    "audio_session_started session_id=%s", self.session_id
+                )
                 input()
         finally:
             self.stop_event.set()

@@ -285,6 +285,24 @@ CREATE TABLE IF NOT EXISTS sentence_attempts (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (benchmark_id) REFERENCES sentence_benchmarks(id)
 );
+
+CREATE TABLE IF NOT EXISTS decision_logs (
+    id INTEGER PRIMARY KEY,
+    attempt_id TEXT NOT NULL UNIQUE,
+    session_id TEXT NOT NULL,
+    target_word TEXT,
+    decision_status TEXT NOT NULL,
+    reason_codes_json TEXT NOT NULL,
+    signals_json TEXT NOT NULL,
+    versions_json TEXT NOT NULL,
+    ground_truth TEXT,
+    reviewer_id TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    reviewed_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_decision_log_session
+ON decision_logs(session_id, created_at);
 """
 
 

@@ -1,4 +1,5 @@
-.PHONY: init test redis redis-check vector-sync api producer build-demo evaluate-demo
+.PHONY: init test redis redis-check vector-sync api producer build-demo \
+	evaluate-demo frontend frontend-bg dev dev-reload
 
 init:
 	uv sync
@@ -17,7 +18,7 @@ vector-sync:
 	uv run python -m scripts.sync_vector_index
 
 api:
-	uv run uvicorn app.api:app --host 127.0.0.1 --port 8000 --reload
+	uv run --env-file .env uvicorn app.api:app --host 127.0.0.1 --port 8000
 
 producer:
 	uv run python -m app.audio_producer
@@ -29,3 +30,20 @@ build-demo:
 evaluate-demo:
 	@echo "Usage: uv run python -m scripts.demo_evaluate WORD FILE.wav"
 	@echo "Worker equivalent: uv run python -m app.worker evaluate-wav WORD FILE.wav"
+
+frontend:
+	cd frontend && python3 -m http.server 8765
+
+frontend-bg:
+	cd frontend && python3 -m http.server 8765 >/tmp/advx-frontend.log 2>&1 &
+	@echo "Frontend running at http://localhost:8765"
+
+dev:
+	@echo "Starting API on :8000 and frontend on :8765"
+	@trap 'kill $$api_pid 2>/dev/null || true' EXIT INT TERM; \
+		uv run --env-file .env uvicorn app.api:app --host 127.0.0.1 --port 8000 & \
+		api_pid=$$!; \
+		cd frontend && python3 -m http.server 8765
+
+dev-reload:
+	uv run --env-file .env uvicorn app.api:app --host 127.0.0.1 --port 8000 --reload

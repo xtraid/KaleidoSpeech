@@ -57,7 +57,44 @@ def _distance_to_prototypes(
     sequence: np.ndarray,
     prototypes: Sequence[np.ndarray],
 ) -> float:
+    """Return the nearest DTW distance to a prototype collection."""
     return min(dtw_distance(sequence, prototype) for prototype in prototypes)
+
+
+def _subsequence_distance_to_prototypes(
+    sequence: np.ndarray,
+    prototypes: Sequence[np.ndarray],
+    *,
+    length_ratios: tuple[float, ...] = (0.75, 1.0, 1.25),
+) -> float:
+    """Find a word prototype inside a longer utterance.
+
+    This is the lightweight sentence-mode baseline: each prototype is compared
+    with overlapping windows near its expected duration instead of stretching
+    the complete sentence onto one isolated-word recording.
+    """
+    observed = np.asarray(sequence, dtype=np.float32)
+    if observed.ndim != 2 or not len(observed):
+        raise ValueError("sequence must be a non-empty feature matrix")
+    best = float("inf")
+    for prototype in prototypes:
+        expected = np.asarray(prototype, dtype=np.float32)
+        for ratio in length_ratios:
+            window_length = max(3, round(len(expected) * ratio))
+            if window_length >= len(observed):
+                candidates = (observed,)
+            else:
+                hop = max(1, window_length // 5)
+                starts = list(range(0, len(observed) - window_length + 1, hop))
+                final_start = len(observed) - window_length
+                if not starts or starts[-1] != final_start:
+                    starts.append(final_start)
+                candidates = (
+                    observed[start : start + window_length] for start in starts
+                )
+            for candidate in candidates:
+                best = min(best, dtw_distance(candidate, expected, band_ratio=1.0))
+    return best
 
 
 def _prototype_medoid_candidates(
@@ -108,6 +145,7 @@ def _prototype_medoid_candidates(
 
 
 def _quantile(values: Sequence[float], probability: float) -> float:
+    """Compute a calibration quantile while rejecting missing evidence."""
     if not values:
         raise ValueError("Cannot calibrate an empty distance distribution")
     return float(np.quantile(np.asarray(values), probability))
@@ -228,6 +266,7 @@ def _contrastive_decision(
     *,
     cleaning_status: str,
 ) -> ContrastiveDecision:
+    """Apply target thresholds only when the target beats its competitors."""
     target_distance = distances.get(target.word)
     competitors = [
         (word, distance)

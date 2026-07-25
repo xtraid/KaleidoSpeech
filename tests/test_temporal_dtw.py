@@ -11,6 +11,7 @@ from app.acoustic_repository import store_recording
 from app.config import get_settings
 from app.decision import DecisionStatus
 from app.temporal_benchmark import (
+    _subsequence_distance_to_prototypes,
     _contrastive_decision,
     build_temporal_benchmarks,
 )
@@ -51,6 +52,23 @@ def test_temporal_features_and_dtw_are_deterministic() -> None:
         dtw_distance(different, first),
         abs=1e-12,
     )
+
+
+def test_subsequence_dtw_finds_a_word_inside_a_sentence() -> None:
+    rng = np.random.default_rng(7)
+    prototype = rng.normal(size=(12, FEATURE_DIMENSION)).astype(np.float32)
+    sentence = np.concatenate(
+        (
+            rng.normal(size=(18, FEATURE_DIMENSION)),
+            prototype,
+            rng.normal(size=(20, FEATURE_DIMENSION)),
+        ),
+        axis=0,
+    ).astype(np.float32)
+
+    distance = _subsequence_distance_to_prototypes(sentence, (prototype,))
+
+    assert distance == pytest.approx(0.0, abs=1e-7)
 
 
 def _benchmark() -> TemporalBenchmark:

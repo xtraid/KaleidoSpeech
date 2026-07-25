@@ -10,6 +10,7 @@ import time
 
 from app.streaming_inference import (
     DistanceProvider,
+    FinalEvaluator,
     StreamingConfig,
     StreamingInferenceSession,
     database_distance_provider,
@@ -28,6 +29,7 @@ class LiveDecisionTracker:
     result: str | None = None
     pre_roll: deque[bytes] | None = None
     utterance: list[bytes] | None = None
+    final_evaluator: FinalEvaluator | None = None
 
     def __post_init__(self) -> None:
         self.pre_roll = deque(maxlen=3)
@@ -55,9 +57,20 @@ class LiveDecisionTracker:
             return "ASCOLTO"
 
         self.speaking = False
-        distances = self.distance_provider(b"".join(self.utterance))
+        utterance_pcm = b"".join(self.utterance)
         self.utterance = []
         self.pre_roll.clear()
+        if self.final_evaluator is not None:
+            result = self.final_evaluator(utterance_pcm, self.target.word)
+            self.result = {
+                "CORRECT": "CORRETTO",
+                "INCORRECT": "NON CORRETTO",
+                "UNDECIDABLE": "INCERTO",
+                "RETRY": "RIPETI",
+            }[result["status"]]
+            reason = ",".join(result.get("reason_codes", []))
+            return f"{self.result} [{reason}]" if reason else self.result
+        distances = self.distance_provider(utterance_pcm)
         if not distances:
             self.result = "RIPETI"
             return self.result
@@ -93,9 +106,20 @@ def main() -> None:
         action="store_true",
         help="Print only a provisional target-word decision every 40 ms.",
     )
+    parser.add_argument(
+        "--phonetic",
+        action="store_true",
+        help="Run the utterance-level phoneme model after each detected word.",
+    )
+    parser.add_argument(
+        "--allow-model-download",
+        action="store_true",
+        help="Allow downloading the selected model if it is not cached.",
+    )
     arguments = parser.parse_args()
     target = None
     config = None
+    final_evaluator = None
     if arguments.decision_only:
         if len(arguments.words) != 1:
             parser.error("--decision-only requires exactly one target word")
@@ -109,6 +133,29 @@ def main() -> None:
         config = StreamingConfig(
             voice_rms_threshold=arguments.voice_threshold,
         )
+        if arguments.phonetic:
+            from app.lexicon import EN_US_LEXICON
+            from app.phonetic_pipeline import (
+                DtwWordIdentityGate,
+                PronunciationPipeline,
+                cleaning_audio_preprocessor,
+            )
+            from app.pronunciation_engine import (
+                TransformersWav2Vec2PhonemeModel,
+            )
+
+            provider = database_distance_provider()
+            pipeline = PronunciationPipeline(
+                word_gate=DtwWordIdentityGate(provider),
+                phoneme_model=TransformersWav2Vec2PhonemeModel(
+                    local_files_only=not arguments.allow_model_download
+                ),
+                lexicon=EN_US_LEXICON,
+                audio_preprocessor=cleaning_audio_preprocessor,
+            )
+            final_evaluator = (
+                lambda pcm, word: pipeline.evaluate(pcm, word).as_dict()
+            )
 
     session = StreamingInferenceSession(
         arguments.words,
@@ -117,7 +164,10 @@ def main() -> None:
         config=config,
     )
     tracker = (
-        LiveDecisionTracker(target, database_distance_provider())
+        LiveDecisionTracker(
+            target, database_distance_provider(),
+            final_evaluator=final_evaluator,
+        )
         if arguments.decision_only and target is not None
         else None
     )
