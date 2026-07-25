@@ -1,0 +1,12 @@
+{
+  "version": "closed-vocabulary-dtw-validation-v1",
+  "mismatch_margin_threshold": 0.08588068716048952,
+  "temporal_downsample_factor": 2,
+  "validation": {
+    "sample_count": 64,
+    "wrong_word_pair_count": 256,
+    "wrong_word_false_acceptance_rate": 0.01953125,
+    "correct_word_false_rejection_rate": 0.8125
+  },
+  "warning": "Meets the FAR budget but has unacceptable recall; do not treat this baseline as MVP-ready."
+}

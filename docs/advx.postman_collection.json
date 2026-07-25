@@ -1,0 +1,44 @@
+{
+  "info": {
+    "name": "advX speech service",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key": "baseUrl", "value": "http://127.0.0.1:8000"},
+    {"key": "wsUrl", "value": "ws://127.0.0.1:8000"},
+    {"key": "adminToken", "value": ""}
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {"method": "GET", "url": "{{baseUrl}}/health"}
+    },
+    {
+      "name": "SQLite health",
+      "request": {"method": "GET", "url": "{{baseUrl}}/health/sqlite"}
+    },
+    {
+      "name": "Redis health",
+      "request": {"method": "GET", "url": "{{baseUrl}}/health/redis"}
+    },
+    {
+      "name": "Metrics",
+      "request": {"method": "GET", "url": "{{baseUrl}}/metrics"}
+    },
+    {
+      "name": "Review queue",
+      "request": {
+        "method": "GET",
+        "header": [{"key": "X-Admin-Token", "value": "{{adminToken}}"}],
+        "url": "{{baseUrl}}/review/decisions"
+      }
+    },
+    {
+      "name": "Streaming WebSocket",
+      "request": {
+        "method": "GET",
+        "url": "{{wsUrl}}/streaming/sessions/postman-demo"
+      }
+    }
+  ]
+}

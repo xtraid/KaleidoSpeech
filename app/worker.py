@@ -2,20 +2,31 @@
 
 import argparse
 import json
+import logging
 import socket
 from collections.abc import Callable
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 
+import soundfile as sf
 from redis.exceptions import ResponseError
 
+from app.acoustic_benchmark import evaluate_word_pcm
+from app.temporal_benchmark import evaluate_temporal_word_pcm
 from app.benchmark_repository import (
     Benchmark,
     find_benchmark,
     save_attempt,
 )
 from app.pronunciation_engine import PronunciationResult
-from app.redis_bus import client, publish_ui_event, update_session_state
+from app.redis_bus import (
+    client,
+    get_json,
+    publish_ui_event,
+    set_json,
+    update_session_state,
+)
 from app.config import get_settings
 
 
@@ -67,19 +78,19 @@ def get_benchmark(language: str, word: str) -> Benchmark | None:
     """Load a benchmark using Redis as a disposable cache."""
     normalized_word = word.casefold()
     key = f"benchmark:{language.casefold()}:{normalized_word}"
-    cached = client.get(key)
+    cached = get_json(key, redis_client=client)
     if cached is not None:
-        value = json.loads(cached)
-        return Benchmark(**value)
+        return Benchmark(**cached)
 
     benchmark = find_benchmark(language, normalized_word)
     if benchmark is None:
         return None
 
-    client.setex(
+    set_json(
         key,
-        3_600,
-        json.dumps(asdict(benchmark), ensure_ascii=False),
+        asdict(benchmark),
+        ttl_seconds=3_600,
+        redis_client=client,
     )
     return benchmark
 
@@ -103,6 +114,20 @@ def consume_frames(
     group = "pronunciation-workers"
     consumer = f"{socket.gethostname()}-{session_id[:8]}"
     ensure_group(stream, group)
+
+    claimed = client.xautoclaim(
+        stream,
+        group,
+        consumer,
+        min_idle_time=30_000,
+        start_id="0-0",
+        count=25,
+    )
+    pending_messages = claimed[1] if len(claimed) > 1 else []
+    for message_id, fields in pending_messages:
+        sequence, pcm = parse_audio_frame(fields)
+        process_frame(session_id, sequence, pcm)
+        client.xack(stream, group, message_id)
 
     while True:
         batches = client.xreadgroup(
@@ -151,13 +176,69 @@ def persist_final_result(
 
 def _main() -> None:
     parser = argparse.ArgumentParser(
-        description="Consume frames for a session (requires an engine/VAD handler)."
+        description="Pronunciation worker and local acoustic evaluation."
     )
-    parser.add_argument("session_id")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    evaluate_parser = subparsers.add_parser(
+        "evaluate-wav",
+        help="Run the complete local benchmark decision path for one WAV.",
+    )
+    evaluate_parser.add_argument("word")
+    evaluate_parser.add_argument("wav", type=Path)
+    evaluate_parser.add_argument("--locale", default="en-US")
+    evaluate_parser.add_argument("--session-id", default="worker-local")
+    evaluate_parser.add_argument(
+        "--engine",
+        choices=("temporal", "summary"),
+        default="temporal",
+    )
     args = parser.parse_args()
-    raise SystemExit(
-        f"Session {args.session_id}: configure a VAD/engine FrameProcessor "
-        "and call consume_frames()."
+
+    samples, sample_rate = sf.read(args.wav, dtype="int16")
+    if sample_rate != get_settings().sample_rate or samples.ndim != 1:
+        raise SystemExit("Expected a mono 16 kHz WAV")
+    pcm = samples.astype("<i2").tobytes()
+    if args.engine == "temporal":
+        temporal = evaluate_temporal_word_pcm(
+            args.word,
+            pcm,
+            locale=args.locale,
+            session_id=args.session_id,
+        )
+        payload = {
+            "engine": "temporal-dtw",
+            "word": temporal.benchmark.word,
+            "status": temporal.decision.status.value,
+            "distance": temporal.decision.target_distance,
+            "competitor_word": temporal.decision.competitor_word,
+            "competitor_distance": temporal.decision.competitor_distance,
+            "margin": temporal.decision.margin,
+            "score": temporal.score,
+            "reason_codes": list(temporal.decision.reason_codes),
+            "distances": temporal.distances,
+            "attempt_id": temporal.attempt_id,
+        }
+    else:
+        summary = evaluate_word_pcm(
+            args.word,
+            pcm,
+            locale=args.locale,
+            session_id=args.session_id,
+        )
+        payload = {
+            "engine": "summary-mfcc",
+            "word": summary.benchmark.word,
+            "status": summary.decision.status.value,
+            "distance": summary.decision.distance,
+            "score": summary.score,
+            "confidence": summary.confidence,
+            "reason_codes": [
+                reason.value for reason in summary.decision.reason_codes
+            ],
+            "attempt_id": summary.attempt_id,
+        }
+    logging.getLogger(__name__).info(
+        "worker_stopped payload=%s", json.dumps(payload, sort_keys=True)
     )
 
 

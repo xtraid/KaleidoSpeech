@@ -4,11 +4,13 @@ from tempfile import TemporaryDirectory
 import numpy as np
 import soundfile as sf
 
-from app.audio_cleaning import TARGET_SAMPLE_RATE, clean_audio as clean_audio_file
+from app.audio_cleaning import CleaningReport, TARGET_SAMPLE_RATE, clean_wav_files
 
 
-def clean_audio(pcm_s16le: bytes) -> bytes:
-    """Clean one complete mono 16 kHz PCM signed-16 little-endian window."""
+def clean_pcm_with_report(
+    pcm_s16le: bytes,
+) -> tuple[bytes, CleaningReport]:
+    """Clean canonical PCM and retain the quality decision from the pipeline."""
 
     if len(pcm_s16le) % np.dtype("<i2").itemsize != 0:
         raise ValueError("I byte audio non contengono campioni int16 completi")
@@ -31,10 +33,20 @@ def clean_audio(pcm_s16le: bytes) -> bytes:
             subtype="FLOAT",
             format="WAV",
         )
-        clean_audio_file(input_path, output_path, report_path)
+        report = clean_wav_files(input_path, output_path, report_path)
         cleaned, sample_rate = sf.read(output_path, dtype="int16")
 
     if sample_rate != TARGET_SAMPLE_RATE:
         raise RuntimeError("Il cleaning ha prodotto un sample rate non valido")
 
-    return np.asarray(cleaned, dtype="<i2").tobytes()
+    return np.asarray(cleaned, dtype="<i2").tobytes(), report
+
+
+def clean_pcm(pcm_s16le: bytes) -> bytes:
+    """Clean one complete mono 16 kHz PCM signed-16 little-endian window."""
+    cleaned, _ = clean_pcm_with_report(pcm_s16le)
+    return cleaned
+
+
+# Preserve the public boundary used by the worker and black-box test suite.
+clean_audio = clean_pcm

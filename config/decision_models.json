@@ -1,0 +1,13 @@
+{
+  "active": "rule-based-v1",
+  "models": {
+    "rule-based-v1": {
+      "kind": "rule_based",
+      "artifact": null,
+      "created_at": "2026-07-24",
+      "metrics": {},
+      "status": "approved"
+    }
+  },
+  "history": []
+}

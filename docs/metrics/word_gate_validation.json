@@ -1,0 +1,14 @@
+{
+  "downsample_factor": 2,
+  "latency_ms_max": 84.71485300105996,
+  "latency_ms_p50": 40.81606649924652,
+  "latency_ms_p95": 63.54639134988245,
+  "match_accuracy": 0.1875,
+  "mismatch_count": 5,
+  "sample_count": 64,
+  "split": "validation",
+  "threshold": 0.08588068716048952,
+  "uncertain_count": 47,
+  "wrong_word_false_acceptance_rate": 0.01953125,
+  "wrong_word_pair_count": 256
+}

@@ -1,0 +1,104 @@
+asyncapi: 3.0.0
+info:
+  title: advX streaming pronunciation API
+  version: 0.1.0
+  description: Non-clinical real-time pronunciation observations.
+servers:
+  local:
+    host: localhost:8000
+    protocol: ws
+channels:
+  streaming:
+    address: /streaming/sessions/{session_id}
+    parameters:
+      session_id:
+        description: Client-generated identifier matching the documented format.
+    messages:
+      sessionStart:
+        $ref: '#/components/messages/sessionStart'
+      audioFrame:
+        $ref: '#/components/messages/audioFrame'
+      sessionFinish:
+        $ref: '#/components/messages/sessionFinish'
+      partial:
+        $ref: '#/components/messages/partial'
+      final:
+        $ref: '#/components/messages/final'
+operations:
+  sendStreamingInput:
+    action: send
+    channel:
+      $ref: '#/channels/streaming'
+    messages:
+      - $ref: '#/channels/streaming/messages/sessionStart'
+      - $ref: '#/channels/streaming/messages/audioFrame'
+      - $ref: '#/channels/streaming/messages/sessionFinish'
+  receiveStreamingOutput:
+    action: receive
+    channel:
+      $ref: '#/channels/streaming'
+    messages:
+      - $ref: '#/channels/streaming/messages/partial'
+      - $ref: '#/channels/streaming/messages/final'
+components:
+  messages:
+    sessionStart:
+      payload:
+        type: object
+        additionalProperties: false
+        required: [type, target_words]
+        properties:
+          type:
+            const: session.start
+          target_words:
+            type: array
+            minItems: 1
+            maxItems: 20
+            items:
+              type: string
+              maxLength: 64
+          seed: {}
+    audioFrame:
+      contentType: application/octet-stream
+      payload:
+        type: string
+        format: binary
+        description: Exactly 1280 bytes of mono PCM s16le at 16 kHz.
+    sessionFinish:
+      payload:
+        type: object
+        additionalProperties: false
+        required: [type]
+        properties:
+          type:
+            const: session.finish
+    partial:
+      payload:
+        type: object
+        required: [type, sequence, elapsed_ms, provisional]
+        properties:
+          type:
+            const: stream.inference.partial
+          sequence:
+            type: integer
+          elapsed_ms:
+            type: integer
+          provisional:
+            const: true
+    final:
+      payload:
+        type: object
+        required: [type, status, provisional, clinical_use]
+        properties:
+          type:
+            const: stream.inference.final
+          status:
+            enum: [CORRECT, INCORRECT, RETRY, UNDECIDABLE, REVIEW_REQUIRED]
+          reason_codes:
+            type: array
+            items:
+              type: string
+          provisional:
+            const: false
+          clinical_use:
+            const: false
