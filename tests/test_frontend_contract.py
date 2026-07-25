@@ -37,3 +37,19 @@ def test_undecidable_result_is_low_confidence_for_frontend() -> None:
 
     assert event["score"] is None
     assert event["confidence"] == 0.0
+
+
+def test_ensemble_confidence_is_sent_to_frontend() -> None:
+    event = pronunciation_evaluated_event(
+        attempt_id="attempt_3",
+        session_id="session_1",
+        result={
+            "status": "CORRECT",
+            "word_identity_confidence": 0.4,
+            "decision_confidence": 0.86,
+            "ensemble": {"weighted_score": 0.73},
+        },
+    )
+
+    assert event["confidence"] == 0.86
+    assert event["score"] == 0.73

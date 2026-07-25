@@ -162,7 +162,11 @@ class StreamingInferenceSession:
         self._sentence_pending: Future[dict] | None = None
         self._sentence_executor = (
             ThreadPoolExecutor(max_workers=1, thread_name_prefix="stream-phonetic")
-            if self.expected_text and self._sentence_final_evaluator is not None
+            if (
+                self.config.background_inference
+                and self.expected_text
+                and self._sentence_final_evaluator is not None
+            )
             else None
         )
         self._emitted_sentence_words: set[int] = set()
@@ -239,17 +243,29 @@ class StreamingInferenceSession:
             1, self.config.phonetic_refresh_ms // self.config.frame_ms
         )
         if (
-            self._sentence_executor is not None
+            self._sentence_final_evaluator is not None
             and self._sentence_pending is None
             and elapsed >= self.config.phonetic_refresh_ms
             and len(self._frames) % phonetic_refresh_frames == 0
         ):
-            self._sentence_pending = self._sentence_executor.submit(
-                self._sentence_final_evaluator,
+            arguments = (
                 self.pcm,
                 self.expected_text,
                 self.prompt.target_words[0],
             )
+            if self._sentence_executor is None:
+                self._sentence_pending = Future()
+                try:
+                    self._sentence_pending.set_result(
+                        self._sentence_final_evaluator(*arguments)
+                    )
+                except Exception as error:
+                    self._sentence_pending.set_exception(error)
+            else:
+                self._sentence_pending = self._sentence_executor.submit(
+                    self._sentence_final_evaluator,
+                    *arguments,
+                )
         if self._pending is not None and self._pending.done():
             try:
                 self._latest_distances = self._pending.result()

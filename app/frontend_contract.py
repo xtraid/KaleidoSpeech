@@ -13,14 +13,22 @@ def pronunciation_evaluated_event(
 ) -> dict[str, Any]:
     phones = result.get("phones") or []
     status = str(result.get("status", "UNDECIDABLE"))
-    if status == "CORRECT":
-        score: float | None = 1.0
+    ensemble = result.get("ensemble") or {}
+    weighted_score = ensemble.get("weighted_score")
+    score: float | None
+    if isinstance(weighted_score, (int, float)):
+        score = max(0.0, min(1.0, float(weighted_score)))
+    elif status == "CORRECT":
+        score = 1.0
     elif status == "INCORRECT":
         score = 0.0
     else:
         score = None
     versions = result.get("versions") or {}
-    confidence = result.get("word_identity_confidence")
+    confidence = result.get(
+        "decision_confidence",
+        result.get("word_identity_confidence"),
+    )
     if not isinstance(confidence, (int, float)):
         confidence = 0.0
     return {

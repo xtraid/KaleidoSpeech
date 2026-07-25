@@ -1,10 +1,23 @@
 {
-  "active": "rule-based-v1",
+  "active": "weighted-ensemble-v1",
   "models": {
     "rule-based-v1": {
       "kind": "rule_based",
       "artifact": null,
       "created_at": "2026-07-24",
+      "metrics": {},
+      "status": "approved"
+    },
+    "weighted-ensemble-v1": {
+      "kind": "weighted_ensemble",
+      "artifact": null,
+      "created_at": "2026-07-25",
+      "activation_floor": 0.65,
+      "ensemble_weights": {
+        "phonetic": 0.6,
+        "dtw": 0.25,
+        "single_word": 0.15
+      },
       "metrics": {},
       "status": "approved"
     }
