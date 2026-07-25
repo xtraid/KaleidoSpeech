@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import soundfile as sf
 
-from app.audio_cleaning import PIPELINE_VERSION, clean_audio
+from app.audio_cleaning import PIPELINE_VERSION, clean_wav_files
 
 
 def _voice_like_signal(
@@ -35,7 +35,7 @@ def test_clean_audio_respects_output_contract(tmp_path) -> None:
     report_path = tmp_path / "cleaning_report.json"
     sf.write(raw_path, _voice_like_signal(), 48_000)
 
-    report = clean_audio(raw_path, clean_path, report_path)
+    report = clean_wav_files(raw_path, clean_path, report_path)
 
     cleaned, sample_rate = sf.read(clean_path, dtype="float32")
     file_info = sf.info(clean_path)
@@ -60,7 +60,7 @@ def test_clean_audio_rejects_audio_without_voice(tmp_path) -> None:
     sf.write(raw_path, np.zeros(16_000, dtype=np.float32), 16_000)
 
     with pytest.raises(ValueError, match="regione vocale"):
-        clean_audio(
+        clean_wav_files(
             raw_path,
             tmp_path / "clean.wav",
             tmp_path / "report.json",

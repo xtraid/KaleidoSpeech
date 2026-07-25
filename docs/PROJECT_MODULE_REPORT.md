@@ -151,7 +151,6 @@ Adatta la pipeline a PCM in memoria. Scrive temporaneamente WAV, invoca
 
 - `clean_pcm_with_report()` restituisce audio e report;
 - `clean_pcm()` restituisce solo l'audio;
-- `clean_audio` è un alias compatibile con il vecchio contratto.
 
 ### `app/temporal_features.py`
 

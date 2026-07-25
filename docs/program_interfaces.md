@@ -87,7 +87,7 @@ Il risultato è una registrazione completa della parola, non un singolo frame.
 Interfaccia pubblica:
 
 ```python
-clean_audio(pcm_s16le: bytes) -> bytes
+clean_pcm(pcm_s16le: bytes) -> bytes
 ```
 
 Precondizioni:

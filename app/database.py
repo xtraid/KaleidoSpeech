@@ -25,7 +25,3 @@ def db_connection() -> Generator[sqlite3.Connection, None, None]:
         yield database
     finally:
         database.close()
-
-
-# Backward-compatible name for code written before the implementation guide.
-connection = db_connection

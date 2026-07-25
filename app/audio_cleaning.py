@@ -400,11 +400,6 @@ def clean_wav_files(
     return report
 
 
-# Backwards-compatible name. New code should use ``clean_wav_files`` to make
-# the file-based contract explicit.
-clean_audio = clean_wav_files
-
-
 def main() -> None:
 
     parser = argparse.ArgumentParser(

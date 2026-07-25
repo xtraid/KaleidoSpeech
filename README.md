@@ -404,11 +404,10 @@ as words.
 The public PCM cleaning boundary is:
 
 ```python
-app.cleaning.clean_audio(pcm_s16le: bytes) -> bytes
+app.cleaning.clean_pcm(pcm_s16le: bytes) -> bytes
 ```
 
-Its explicit name is `app.cleaning.clean_pcm`; `clean_audio` remains as a
-backward-compatible alias. The file-based implementation is named
+The file-based implementation is named
 `app.audio_cleaning.clean_wav_files`, avoiding ambiguity between PCM and path
 contracts.
 

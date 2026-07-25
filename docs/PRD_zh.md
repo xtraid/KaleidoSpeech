@@ -106,7 +106,7 @@ PronunciationEngine
 完整窗口的 cleaning 公共入口为：
 
 ```python
-app.cleaning.clean_audio(pcm_s16le: bytes) -> bytes
+app.cleaning.clean_pcm(pcm_s16le: bytes) -> bytes
 ```
 
 输出必须满足：

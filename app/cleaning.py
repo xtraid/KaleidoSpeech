@@ -46,7 +46,3 @@ def clean_pcm(pcm_s16le: bytes) -> bytes:
     """Clean one complete mono 16 kHz PCM signed-16 little-endian window."""
     cleaned, _ = clean_pcm_with_report(pcm_s16le)
     return cleaned
-
-
-# Preserve the public boundary used by the worker and black-box test suite.
-clean_audio = clean_pcm

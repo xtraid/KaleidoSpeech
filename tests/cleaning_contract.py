@@ -14,7 +14,7 @@ Cleaner = Callable[..., bytes]
 
 def load_cleaner() -> Cleaner:
     """Load ``module:function`` without depending on cleaning internals."""
-    entrypoint = os.getenv("CLEANING_ENTRYPOINT", "app.cleaning:clean_audio")
+    entrypoint = os.getenv("CLEANING_ENTRYPOINT", "app.cleaning:clean_pcm")
     try:
         module_name, function_name = entrypoint.split(":", maxsplit=1)
     except ValueError as error:
